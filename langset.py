@@ -1,6 +1,4 @@
-import re
-
-LANG_LINE_PATTERN = re.compile(r'^([^/#]+?)=(.*)$')
+from utils import match_lang_line
 
 
 class LangSet:
@@ -29,7 +27,7 @@ class LangSet:
         self.__lang_key_file_map = {}
         for filename, content in self.lang_map.items():
             for line in content.splitlines():
-                match = LANG_LINE_PATTERN.match(line)
-                if match:
-                    self.__lang_key_value_map[match.group(1)] = match.group(2)
-                    self.__lang_key_file_map[match.group(1)] = filename
+                k, v = match_lang_line(line)
+                if k is not None:
+                    self.__lang_key_value_map[k] = v
+                    self.__lang_key_file_map[k] = v

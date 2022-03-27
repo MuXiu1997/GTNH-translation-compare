@@ -5,10 +5,9 @@ import subprocess
 from os import path
 from zipfile import ZipFile
 
-from langset import LANG_LINE_PATTERN
 from modpack import ModPack
 from translationpack import TranslationPack
-from utils import get_similarity
+from utils import get_similarity, match_lang_line
 
 
 def generate_translation(nmp: ModPack, omp: ModPack, tp: TranslationPack, output_dir: str):
@@ -21,9 +20,8 @@ def generate_translation(nmp: ModPack, omp: ModPack, tp: TranslationPack, output
                 fp.write(tp.lang_map.get(output_file_name, ''))
             else:
                 for line in nmp.lang_map.get(file_name).splitlines():
-                    m = LANG_LINE_PATTERN.match(line)
-                    if m is not None:
-                        key = m.group(1)
+                    key, _ = match_lang_line(line)
+                    if key is not None:
                         if nmp.lang_key_value_map.get(key) == omp.lang_key_value_map.get(key):
                             if tp.lang_key_value_map.get(key) is not None:
                                 fp.write(f'{key}={tp.lang_key_value_map.get(key)}\n')
