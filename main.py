@@ -10,6 +10,16 @@ from translationpack import TranslationPack
 from utils import get_similarity, match_lang_line
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--old-modpack-path', dest='old_modpack_path', type=str, required=True)
+    parser.add_argument('--new-modpack-path', dest='new_modpack_path', type=str, required=True)
+    parser.add_argument('--reference-path', dest='reference_path', type=str, required=True)
+    parser.add_argument('--output-path', dest='output_path', type=str, required=True)
+    parser.add_argument('--repo-path', dest='repo_path', type=str, required=False)
+    return parser.parse_args()
+
+
 def generate_translation(nmp: ModPack, omp: ModPack, tp: TranslationPack, output_dir: str):
     for file_name in nmp.lang_map.keys():
         output_file_name = file_name.replace('en_US', 'zh_CN')
@@ -43,13 +53,7 @@ def get_changed_paths(omp: ModPack, nmp: ModPack, rtp: TranslationPack):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--old-modpack-path', dest='old_modpack_path', type=str, required=True)
-    parser.add_argument('--new-modpack-path', dest='new_modpack_path', type=str, required=True)
-    parser.add_argument('--reference-path', dest='reference_path', type=str, required=True)
-    parser.add_argument('--output-path', dest='output_path', type=str, required=True)
-    parser.add_argument('--repo-path', dest='repo_path', type=str, required=False)
-    args = parser.parse_args()
+    args = parse_args()
 
     new_mod_pack = ModPack(ZipFile(args.new_modpack_path))
     old_mod_pack = ModPack(ZipFile(args.old_modpack_path))
