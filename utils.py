@@ -1,4 +1,5 @@
 import re
+import subprocess
 
 WIN_ILLEGAL_CHARS = re.compile(r'[\\/:*?"<>|]')
 LANG_LINE_PATTERN = re.compile(r'^([^/#]+?)=(.*)$')
@@ -23,3 +24,8 @@ def match_lang_line(line: str) -> (str | None, str | None):
     if match:
         return match.group(1), match.group(2)
     return None, None
+
+
+def git_commit(message: str, pathspec: str = '.', cwd=None):
+    subprocess.run(['git', 'add', pathspec], cwd=cwd)
+    subprocess.run(['git', 'commit', '-m', message], cwd=cwd)

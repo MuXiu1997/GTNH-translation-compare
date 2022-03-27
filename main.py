@@ -65,8 +65,7 @@ if __name__ == '__main__':
             if path.exists(path.join(resources_mod_path, m['to'])):
                 continue
             shutil.move(path.join(resources_mod_path, m['from']), path.join(resources_mod_path, m['to']))
-            subprocess.run(['git', 'add', resources_mod_rel_path], cwd=args.repo_path)
-            subprocess.run(['git', 'commit', '-m', f'重命名文件夹 {m["from"]} -> {m["to"]}'], cwd=args.repo_path)
+            git_commit(f'重命名文件夹 {m["from"]} -> {m["to"]}', resources_mod_rel_path, args.repo_path)
     else:
         for m in changed_paths:
             print(f'{m["from"]} -> {m["to"]}')
@@ -75,5 +74,4 @@ if __name__ == '__main__':
     if args.repo_path is not None:
         shutil.rmtree(resources_mod_path)
         shutil.copytree(args.output_path, resources_mod_path)
-        subprocess.run(['git', 'add', resources_mod_rel_path], cwd=args.repo_path)
-        subprocess.run(['git', 'commit', '-m', '更新mod语言文件'], cwd=args.repo_path)
+        git_commit('更新mod语言文件', resources_mod_rel_path, args.repo_path)
