@@ -4,10 +4,11 @@ from pathlib import Path
 
 from utils import paratranz
 
-proxies = {
-    'http': 'http://172.28.224.1:10811',
-    'https': 'http://172.28.224.1:10811',
-}
+
+# proxies = {
+#     'http': 'http://172.28.224.1:10811',
+#     'https': 'http://172.28.224.1:10811',
+# }
 
 
 def parse_args():
@@ -24,7 +25,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     paratranz.set_token(token)
-    paratranz.set_proxies(proxies)
+    # paratranz.set_proxies(proxies)
     res = paratranz.get_files()
     files = res.json()
     files = dict(zip([f['name'] for f in files], files))
@@ -83,6 +84,3 @@ if __name__ == "__main__":
     # for key, item in files.items():
     #     res = paratranz.delete_file(item['id'])
     #     print("delete", i, key, res.status_code, res.reason)
-
-
-

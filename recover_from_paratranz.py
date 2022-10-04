@@ -10,10 +10,11 @@ from internal.modpack import ModPack
 
 from utils import paratranz
 
-proxies = {
-    'http': 'http://172.28.224.1:10811',
-    'https': 'http://172.28.224.1:10811',
-}
+
+# proxies = {
+#     'http': 'http://172.28.224.1:10811',
+#     'https': 'http://172.28.224.1:10811',
+# }
 
 
 def parse_args():
