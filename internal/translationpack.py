@@ -11,10 +11,10 @@ from .scriptfiletype import ScriptFiletype
 class TranslationPack:
     def __init__(self, pack_path: pathlib.Path):
         self.__pack_path = pack_path
-        self.lang_files: Sequence[Comparable] = self.__get_lang_files()
-        self.script_files: Sequence[Comparable] = self.__get_script_files()
+        self.lang_files: Sequence[LangFiletype] = self.__get_lang_files()
+        self.script_files: Sequence[ScriptFiletype] = self.__get_script_files()
 
-    def __get_lang_files(self) -> Sequence[Comparable]:
+    def __get_lang_files(self) -> Sequence[LangFiletype]:
         lang_files: list[LangFiletype] = []
         resources_path = self.__pack_path / "resources"
         for f in resources_path.glob("**/zh_CN.lang"):
@@ -23,7 +23,7 @@ class TranslationPack:
         return lang_files
 
     # noinspection DuplicatedCode
-    def __get_script_files(self) -> Sequence[Comparable]:
+    def __get_script_files(self) -> Sequence[ScriptFiletype]:
         script_files: list[ScriptFiletype] = []
         for f in self.__pack_path.glob("scripts/*.zs"):
             script_file = ScriptFiletype(f.name, utils.ensure_lf(f.read_text(encoding="utf-8", errors="ignore")))

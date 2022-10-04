@@ -17,10 +17,10 @@ class ModPack:
             self.__pack_path = pack_path
         elif len(list(pack_path.glob("*/resources"))) == 1:
             self.__pack_path = pathlib.Path(path.join(list(pack_path.glob("*/resources"))[0], ".."))
-        self.lang_files: Sequence[Comparable] = self.__get_lang_files()
-        self.script_files: Sequence[Comparable] = self.__get_script_files()
+        self.lang_files: Sequence[LangFiletype] = self.__get_lang_files()
+        self.script_files: Sequence[ScriptFiletype] = self.__get_script_files()
 
-    def __get_lang_files(self) -> Sequence[Comparable]:
+    def __get_lang_files(self) -> Sequence[LangFiletype]:
         lang_files: list[LangFiletype] = []
         for mod_path in self.__pack_path.glob("mods/**/*.jar"):
             with mod_path.open("rb") as mod_jar:
@@ -32,7 +32,7 @@ class ModPack:
         return lang_files
 
     # noinspection DuplicatedCode
-    def __get_script_files(self) -> Sequence[Comparable]:
+    def __get_script_files(self) -> Sequence[ScriptFiletype]:
         script_files: list[ScriptFiletype] = []
         for f in self.__pack_path.glob("scripts/*.zs"):
             script_file = ScriptFiletype(f.name, utils.ensure_lf(f.read_text(encoding="utf-8", errors="ignore")))
