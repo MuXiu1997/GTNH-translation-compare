@@ -1,13 +1,14 @@
 from abc import ABCMeta, abstractmethod
-from typing import Dict
+from typing import Dict, Union
 
 
 class Property:
-    def __init__(self, key: str, value: str, start: int, end: int):
+    def __init__(self, key: str, value: str, start: int, end: int, duplicated: bool = False):
         self.key = key
         self.value = value
         self.start = start
         self.end = end
+        self.duplicated = duplicated
 
 
 class Comparable(metaclass=ABCMeta):

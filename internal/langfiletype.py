@@ -1,5 +1,13 @@
 from .comparable import Comparable, Property
 
+__UID = 0
+
+
+def gen_uid() -> int:
+    global __UID
+    __UID += 1
+    return __UID
+
 
 class LangFiletype(Comparable):
     def __init__(self, relpath: str, content: str):
@@ -42,10 +50,13 @@ class LangFiletype(Comparable):
             if len(split) != 2:
                 continue
             key = f"lang+{split[0]}"
-            len_before_value = len(split[0])+1  # after '='
+            len_before_value = len(split[0]) + 1  # after '='
             value = line[len_before_value:]
-            properties[key] = Property(
-                key, value, start + len_before_value, end)
+            if key in properties:
+                dup_key = key + "@" + str(gen_uid())
+                properties[dup_key] = Property(key, value, start + len_before_value, end, duplicated=True)
+            else:
+                properties[key] = Property(key, value, start + len_before_value, end)
         return properties
 
     def convert_relpath(self, relpath: str) -> str:

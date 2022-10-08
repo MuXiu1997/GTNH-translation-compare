@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import TypedDict, Union
+from typing import TypedDict, Union, Tuple
 import requests
 from requests import Response
 
@@ -13,6 +13,10 @@ class ParatranzItem(TypedDict):
     original: str
     translation: str
     context: str
+
+class ParatranzContext(TypedDict):
+    p: Tuple[int, int]
+    d: str
 
 
 BASE_URL = "https://paratranz.cn/api/"
@@ -91,21 +95,60 @@ def download(target: str):
 
 def to_json(source_props: dict[str, Property],
             target_file: str,
-            translated_props: dict[str, Property] = {},
+            translated_props: dict[str, Property] = None,
             encode: bool = False):
+    if translated_props is None:
+        translated_props: dict[str, Property] = {}
     items: list[ParatranzItem] = []
-    for key, prop in source_props.items():
+    for uni_key, prop in source_props.items():
         item: ParatranzItem = {
-            "key": key,
+            "key": uni_key,
             "original": prop.value,
         }
-        translated_item = translated_props.get(key, None)
-        if translated_item is not None:
-            item["translation"] = translated_item.value if not encode else translated_item.value.encode(
-                'ascii').decode('unicode_escape')
-        item["context"] = "{}:{}".format(prop.start, prop.end)
+        context: ParatranzContext = {
+            "p": (prop.start, prop.end)
+        }
+        if prop.duplicated:
+            item["translation"] = "重复的 key，请忽略"
+            context["d"] = prop.key
+        else:
+            translated_item = translated_props.get(prop.key, None)
+            if translated_item is not None:
+                if encode:
+                    item["translation"] = translated_item.value.encode('ascii').decode('unicode_escape')
+                else:
+                    item["translation"] = translated_item.value
+        item["context"] = json.dumps(context)
         items.append(item)
     if os.path.dirname(target_file) != "":
         os.makedirs(os.path.dirname(target_file), exist_ok=True)
     with open(target_file, "w") as fp:
         json.dump(items, fp, indent=4, ensure_ascii=False)
+
+
+def translated_content(en_content: str,
+                       translated_items: list[ParatranzItem],
+                       re_encode: bool = False) -> str:
+    content = ""
+    last_end = 0
+    for item in translated_items:
+        context: ParatranzContext = json.loads(item["context"])
+        start, end = context["p"]
+        value = ""
+        if "d" in context:
+            # FIXME: if not found
+            for inner_item in translated_items:
+                if inner_item["key"] == context["d"]:
+                    value = inner_item["translation"]
+                    break
+        elif "translation" in item and item["translation"] != "":
+            value = item["translation"]
+        else:
+            value = item["original"]
+        if re_encode:
+            value = value.encode("unicode_escape").decode('ascii')
+
+        content += en_content[last_end:start] + value
+        last_end = end
+    content += en_content[last_end:]
+    return content

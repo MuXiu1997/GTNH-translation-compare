@@ -9,6 +9,7 @@ import tempfile
 from internal.modpack import ModPack
 
 from utils import paratranz
+from utils.paratranz import translated_content
 
 
 # proxies = {
@@ -26,26 +27,6 @@ def parse_args():
     parser.add_argument("--output-path", dest="output_path",
                         type=str, required=True)
     return parser.parse_args()
-
-
-def translated_content(en_content: str,
-                       translated_items: list[paratranz.ParatranzItem],
-                       re_encode: bool = False) -> str:
-    content = ""
-    last_end = 0
-    for item in translated_items:
-        start = int(item["context"].split(":")[0])
-        if "translation" in item and item["translation"] != "":
-            value = item["translation"]
-        else:
-            value = item["original"]
-        if re_encode:
-            value = value.encode("unicode_escape").decode('ascii')
-
-        content += en_content[last_end:start] + value
-        last_end = int(item["context"].split(":")[1])
-    content += en_content[last_end:]
-    return content
 
 
 if __name__ == "__main__":
