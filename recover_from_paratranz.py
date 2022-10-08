@@ -21,6 +21,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mod-pack-path",
                         dest="mod_pack_path", type=str, required=True)
+    parser.add_argument("--translated-pack-path",
+                        dest="translated_pack_path", type=str, required=True)
     parser.add_argument("--output-path", dest="output_path",
                         type=str, required=True)
     return parser.parse_args()
@@ -113,7 +115,7 @@ if __name__ == "__main__":
             else:
                 print("not found", script_name)
 
-        quest_en = Path(args.mod_pack_path) / "resources" / "minecraft" / "lang" / "en_US.lang"
+        quest_en = Path(args.translated_pack_path) / "resources" / "minecraft" / "lang" / "en_US.lang"
         quest_zh = translated_resource_path / "minecraft" / "lang" / "zh_CN.lang"
         with open(path.join(tmp_dir, "utf8/quest.json"), "r") as fp:
             items: list[paratranz.ParatranzItem] = json.load(fp)

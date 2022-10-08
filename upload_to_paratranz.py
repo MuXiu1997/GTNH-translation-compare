@@ -36,10 +36,10 @@ if __name__ == "__main__":
         resource: str
         file_name = "resources/" + resource
         file_rel_path = os.path.join(args.json_path, file_name)
-        if i <= 228:
-            del files[file_name]
-            i += 1
-            continue
+        # if i <= 228:
+        #     del files[file_name]
+        #     i += 1
+        #     continue
         if file_name not in files:
             res = paratranz.upload_new_file(file_rel_path, "resources")
             print("upload", end=" ")
@@ -55,10 +55,10 @@ if __name__ == "__main__":
         script: str
         file_name = "scripts/" + script
         file_rel_path = os.path.join(args.json_path, file_name)
-        if i <= 228:
-            del files[file_name]
-            i += 1
-            continue
+        # if i <= 228:
+        #     del files[file_name]
+        #     i += 1
+        #     continue
         if file_name not in files:
             res = paratranz.upload_new_file(file_rel_path, 'scripts')
             print("upload", end=" ")
