@@ -18,7 +18,11 @@ def set_output_and_print(key: str, value: str):
 
 
 def ensure_lf(s: str):
-    return '\n'.join(s.splitlines())
+    s = '\n'.join(s.splitlines())
+    # remove utf-8 bom, Railcraft :(
+    if s.startswith(u'\ufeff'):
+        s = '\n' + s[1:]
+    return s
 
 
 def git_commit(message: str, pathspec: str = '.', cwd=None):
