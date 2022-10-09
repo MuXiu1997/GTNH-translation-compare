@@ -131,6 +131,8 @@ def translated_content(en_content: str,
                        re_encode: bool = False) -> str:
     content = ""
     last_end = 0
+    # sort by start position
+    translated_items = sorted(translated_items, key=lambda x: json.loads(x["context"])["p"][0])
     for item in translated_items:
         context: ParatranzContext = json.loads(item["context"])
         start, end = context["p"]
