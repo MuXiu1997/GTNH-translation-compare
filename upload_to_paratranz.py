@@ -2,7 +2,7 @@ import argparse
 import os
 from pathlib import Path
 
-from utils import paratranz
+from utils.paratranz import ParatranzAPI
 
 
 # proxies = {
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    paratranz.set_token(token)
+    paratranz = ParatranzAPI(token)
     # paratranz.set_proxies(proxies)
     res = paratranz.get_files()
     files = res.json()
@@ -33,7 +33,6 @@ if __name__ == "__main__":
 
     resource_path = Path(args.json_path) / "resources"
     for resource in os.listdir(resource_path):
-        resource: str
         file_name = "resources/" + resource
         file_rel_path = os.path.join(args.json_path, file_name)
         # if i <= 228:
@@ -52,7 +51,6 @@ if __name__ == "__main__":
 
     script_path = Path(args.json_path) / "scripts"
     for script in os.listdir(script_path):
-        script: str
         file_name = "scripts/" + script
         file_rel_path = os.path.join(args.json_path, file_name)
         # if i <= 228:
@@ -69,14 +67,14 @@ if __name__ == "__main__":
         print(i, file_name, res.status_code, res.reason)
         i += 1
 
-    quest = "quest.json"
-    quest_rel_path = Path(args.json_path) / quest
-    if quest not in files:
+    QUEST = "quest.json"
+    quest_rel_path = Path(args.json_path) / QUEST
+    if QUEST not in files:
         res = paratranz.upload_new_file(quest_rel_path, '')
         print("upload", end=" ")
     else:
-        res_original, res = paratranz.update_file(quest_rel_path, files[quest]['id'])
-        del files[quest]
+        res_original, res = paratranz.update_file(quest_rel_path, files[QUEST]['id'])
+        del files[QUEST]
         print("update", end=" ")
     print(i, "quest", res.status_code, res.reason)
     i += 1

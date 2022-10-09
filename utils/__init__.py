@@ -20,7 +20,7 @@ def set_output_and_print(key: str, value: str):
 def ensure_lf(s: str):
     s = '\n'.join(s.splitlines())
     # remove utf-8 bom, Railcraft :(
-    if s.startswith(u'\ufeff'):
+    if s.startswith('\ufeff'):
         s = '\n' + s[1:]
     return s
 
