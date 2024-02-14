@@ -51,7 +51,7 @@ JA_JP_CONTENT = "\n".join(
         "",
     ]
 )
-KO_KR_RELPATH = "GregTech_KR.lang"
+KO_KR_RELPATH = "GregTech.lang"
 KO_KR_CONTENT = "\n".join(
     [
         "# Configuration file",
@@ -84,6 +84,7 @@ def zh_cn_filetype_gt_lang() -> FiletypeGTLang:
 def ja_jp_filetype_gt_lang() -> FiletypeGTLang:
     return FiletypeGTLang(JA_JP_RELPATH, JA_JP_CONTENT, Language.ja_JP)
 
+@pytest.fixture(scope="module")
 def ko_kr_filetype_gt_lang() -> FiletypeGTLang:
     return FiletypeGTLang(KO_KR_RELPATH, KO_KR_CONTENT, Language.ko_KR)
 
@@ -150,7 +151,7 @@ def test_get_zh_cn_relpath(
     ja_jp_filetype_gt_lang: FiletypeGTLang,
     ko_kr_filetype_gt_lang: FiletypeGTLang,
 ) -> None:
-    assert en_us_filetype_gt_lang.get_target_language_relpath(Language.zh_CN) == EN_US_RELPATH
-    assert zh_cn_filetype_gt_lang.get_target_language_relpath(Language.ja_JP) == JA_JP_RELPATH
-    assert ja_jp_filetype_gt_lang.get_target_language_relpath(Language.zh_CN) == ZH_CN_RELPATH
-    assert ko_kr_filetype_gt_lang.get_target_language_relpath(Language.zh_CN) == KO_KR_RELPATH
+    assert en_us_filetype_gt_lang.get_target_language_relpath(Language.en_US) == EN_US_RELPATH
+    assert zh_cn_filetype_gt_lang.get_target_language_relpath(Language.zh_CN) == ZH_CN_RELPATH
+    assert ja_jp_filetype_gt_lang.get_target_language_relpath(Language.ja_JP) == JA_JP_RELPATH
+    assert ko_kr_filetype_gt_lang.get_target_language_relpath(Language.ko_KR) == KO_KR_RELPATH

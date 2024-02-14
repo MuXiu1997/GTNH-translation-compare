@@ -96,8 +96,8 @@ def test__get_properties(
         "lang|test2": Property("lang|test2", "テスト2=テスト2", "test2=テスト2=テスト2", 22, 31),
     }
     assert ko_kr_filetype_lang.properties == {
-        "lang|test": Property("lang|test", "테스트", "test=테스트", 11, 13),
-        "lang|test2": Property("lang|test2", "테스트2=테스트2", "test2=테스트2=테스트2", 21, 28),
+        "lang|test": Property("lang|test", "테스트", "test=테스트", 11, 14),
+        "lang|test2": Property("lang|test2", "테스트2=테스트2", "test2=테스트2=테스트2", 22, 31),
     }
 
 
