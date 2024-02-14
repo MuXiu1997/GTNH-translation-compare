@@ -113,7 +113,7 @@ def test_get_en_us_relpath(
 def test_get_zh_cn_relpath(
     en_us_filetype_lang: FiletypeLang, zh_cn_filetype_lang: FiletypeLang, ja_jp_filetype_lang: FiletypeLang, ko_kr_filetype_lang: FiletypeLang
 ) -> None:
-    assert en_us_filetype_lang.get_target_language_relpath(Language.zh_CN) == ZH_CN_RELPATH
-    assert zh_cn_filetype_lang.get_target_language_relpath(Language.ja_JP) == JA_JP_RELPATH
-    assert ja_jp_filetype_lang.get_target_language_relpath(Language.zh_CN) == ZH_CN_RELPATH
-    assert ko_kr_filetype_lang.get_target_language_relpath(Language.en_US) == EN_US_RELPATH
+    assert en_us_filetype_lang.get_target_language_relpath(Language.en_US) == EN_US_RELPATH
+    assert zh_cn_filetype_lang.get_target_language_relpath(Language.zh_CN) == ZH_CN_RELPATH
+    assert ja_jp_filetype_lang.get_target_language_relpath(Language.ja_JP) == JA_JP_RELPATH
+    assert ko_kr_filetype_lang.get_target_language_relpath(Language.ko_KR) == KO_KR_RELPATH
