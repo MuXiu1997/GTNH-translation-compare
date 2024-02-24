@@ -158,7 +158,7 @@ def test__get_properties(
     assert ko_kr_filetype_gt_lang.properties == {
         "gt-lang|    S:test": Property("gt-lang|    S:test", "테스트", "    S:test=테스트", 127, 130),
     }
-    assert ko_kr_filetype_gt_lang.properties == {
+    assert pt_br_filetype_gt_lang.properties == {
         "gt-lang|    S:test": Property("gt-lang|    S:test", "teste", "    S:test=teste", 127, 130),
     }
 
