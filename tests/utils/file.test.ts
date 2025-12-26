@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { ensureLf, replaceIllegalCharacters } from '../../src/utils/file.ts'
+import { ensureLf, replaceIllegalCharacters } from '~/utils/file.ts'
 
 describe('file utils', () => {
   it('should replace illegal characters', () => {

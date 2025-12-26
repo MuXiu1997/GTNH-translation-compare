@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { mustGetEnv } from '../../src/utils/env.ts'
+import { mustGetEnv } from '~/utils/env.ts'
 
 describe('mustGetEnv', () => {
   it('should get environment variable', () => {

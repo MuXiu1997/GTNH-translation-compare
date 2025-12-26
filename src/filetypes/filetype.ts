@@ -1,5 +1,5 @@
-import type { Language } from './language.ts'
-import type { Property } from './property.ts'
+import type { Language } from '~/filetypes/language.ts'
+import type { Property } from '~/filetypes/property.ts'
 
 export abstract class Filetype {
   constructor(

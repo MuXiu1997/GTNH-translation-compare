@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { FiletypeScript, Languages } from '../../src/filetypes/index.ts'
+import { FiletypeScript, Languages } from '~/filetypes/index.ts'
 
 const RELPATH = 'test/x/test.zs'
 const CONTENT = [

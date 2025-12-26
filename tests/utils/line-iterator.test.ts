@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { lineIterator } from '../../src/utils/line-iterator.ts'
+import { lineIterator } from '~/utils/line-iterator.ts'
 
 describe('lineIterator', () => {
   it('should correctly iterate over lines', () => {

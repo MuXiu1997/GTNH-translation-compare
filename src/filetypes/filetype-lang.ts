@@ -1,8 +1,8 @@
-import type { Language } from './language.ts'
-import type { Property } from './property.ts'
-import { lineIterator } from '../utils/line-iterator.ts'
-import { Filetype } from './filetype.ts'
-import { Languages } from './language.ts'
+import type { Language } from '~/filetypes/language.ts'
+import type { Property } from '~/filetypes/property.ts'
+import { Filetype } from '~/filetypes/filetype.ts'
+import { Languages } from '~/filetypes/language.ts'
+import { lineIterator } from '~/utils/line-iterator.ts'
 
 export class FiletypeLang extends Filetype {
   #properties?: Record<string, Property>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { toUnicode } from '../../src/utils/unicode.ts'
+import { toUnicode } from '~/utils/unicode.ts'
 
 describe('unicode utils', () => {
   it('should convert to unicode', () => {

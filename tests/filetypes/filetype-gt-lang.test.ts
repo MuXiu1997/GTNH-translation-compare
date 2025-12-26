@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { FiletypeGTLang, Languages } from '../../src/filetypes/index.ts'
+import { FiletypeGTLang, Languages } from '~/filetypes/index.ts'
 
 const EN_US_RELPATH = 'GregTech_US.lang'
 const EN_US_CONTENT = [

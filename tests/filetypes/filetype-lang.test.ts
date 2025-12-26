@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { FiletypeLang, Languages } from '../../src/filetypes/index.ts'
+import { FiletypeLang, Languages } from '~/filetypes/index.ts'
 
 const EN_US_RELPATH = 'test/x/en_US.lang'
 const EN_US_CONTENT = [
