@@ -21,7 +21,7 @@ export const GT_LANG_TARGET_REL_PATH = 'GregTech.lang'
 export const PARATRANZ_PROJECT_ID = Number.parseInt(mustGetEnv('PARATRANZ_PROJECT_ID'), 10)
 export const PARATRANZ_TOKEN = mustGetEnv('PARATRANZ_TOKEN')
 
-export const GIT_AUTHOR = env.GIT_AUTHOR ?? null
+export const CO_AUTHORED_BY = env.CO_AUTHORED_BY ?? null
 export const CLOSE_ISSUE_IN_COMMIT_MESSAGE = (env.CLOSE_ISSUE_IN_COMMIT_MESSAGE ?? 'true').toLowerCase() === 'true'
 
 export const PARATRANZ_CACHE_DIR = env.PARATRANZ_CACHE_DIR ?? '.paratranz_cache'

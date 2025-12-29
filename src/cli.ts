@@ -112,7 +112,6 @@ abstract class BaseCommand extends Command {
       await this.gitCommit(
         repoPath,
         translationFilepaths,
-        settings.GIT_AUTHOR,
         message,
         issue,
         settings.CLOSE_ISSUE_IN_COMMIT_MESSAGE,
@@ -135,7 +134,6 @@ abstract class BaseCommand extends Command {
   private async gitCommit(
     gitRoot: string,
     paths: string[],
-    author: string | null,
     message: string,
     issue?: string,
     closeIssueInCommitMessage = true,
@@ -145,6 +143,9 @@ abstract class BaseCommand extends Command {
       return
     }
 
+    await $`git config user.name "github-actions[bot]"`.cwd(gitRoot)
+    await $`git config user.email "41898282+github-actions[bot]@users.noreply.github.com"`.cwd(gitRoot)
+
     await $`git add ${paths}`.cwd(gitRoot)
 
     let commitMessage = message
@@ -152,11 +153,17 @@ abstract class BaseCommand extends Command {
       commitMessage += `\n\nclosed #${issue}`
     }
 
-    const argsCommit = ['commit', '-m', commitMessage]
-    if (author) {
-      argsCommit.push('--author', author)
+    if (settings.CO_AUTHORED_BY) {
+      const coAuthors = settings.CO_AUTHORED_BY.split('\n').filter(line => line.trim() !== '')
+      if (coAuthors.length > 0) {
+        commitMessage += '\n'
+        for (const author of coAuthors) {
+          commitMessage += `\nCo-authored-by: ${author.trim()}`
+        }
+      }
     }
-    await $`git ${argsCommit}`.cwd(gitRoot)
+
+    await $`git commit -m ${commitMessage}`.cwd(gitRoot)
     consola.success(`Committed: ${message}`)
   }
 }
