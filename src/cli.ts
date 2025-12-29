@@ -257,7 +257,7 @@ class ToParatranzQuestBookCommand extends BaseCommand {
     description: 'Upload quest book to Paratranz',
   })
 
-  sha = Option.String('-s,--sha', 'master', { description: 'Commit SHA or branch name' })
+  sha = Option.String('-s,--commit-sha', 'master', { description: 'Commit SHA or branch name' })
 
   async run() {
     const qbLangFileUrl = `https://raw.githubusercontent.com/${settings.GTNH_REPO}/${this.sha}/${settings.DEFAULT_QUESTS_LANG_TEMPLATE_REL_PATH}`
@@ -302,7 +302,7 @@ class ToParatranzGtLangCommand extends BaseCommand {
     description: 'Upload GT lang files to Paratranz',
   })
 
-  url = Option.String({ name: 'url', required: true })
+  url = Option.String('-u,--gt-lang-url', { description: 'URL of the GT lang file', required: true })
 
   async run() {
     const res = await fetch(this.url)
