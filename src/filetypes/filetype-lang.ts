@@ -4,6 +4,8 @@ import { Filetype } from '~/filetypes/filetype.ts'
 import { Languages } from '~/filetypes/language.ts'
 import { lineIterator } from '~/utils/line-iterator.ts'
 
+const decoder = new TextDecoder()
+
 export class FiletypeLang extends Filetype {
   #properties?: Record<string, Property>
 
@@ -24,23 +26,37 @@ export class FiletypeLang extends Filetype {
 
   private parse(): Record<string, Property> {
     const properties: Record<string, Property> = {}
-    for (const [, line, , end] of lineIterator(this.content)) {
-      if (line.startsWith('#')) {
+    const contentBytes = new TextEncoder().encode(this.content)
+    for (const [, bytes, start, end] of lineIterator(contentBytes)) {
+      if (bytes.length === 0 || bytes[0] === 0x23) { // 0x23 is '#'
         continue
       }
-      const splitIndex = line.indexOf('=')
-      if (splitIndex === -1) {
+
+      // 1. Find the '=' byte (0x3D) without decoding the whole line
+      const splitByteIndex = bytes.indexOf(0x3D)
+      if (splitByteIndex === -1) {
         continue
       }
-      const key = line.substring(0, splitIndex)
+
+      // 2. Count code points up to the byte after '=' to get value start offset
+      // This is extremely fast and avoids string slicing/UTF-16 complexity
+      let valueCpOffset = 0
+      for (let i = 0; i <= splitByteIndex; i++) {
+        if ((bytes[i]! & 0xC0) !== 0x80) {
+          valueCpOffset++
+        }
+      }
+
+      const key = decoder.decode(bytes.subarray(0, splitByteIndex))
       const sKey = `lang|${key}`
-      const value = line.substring(splitIndex + 1)
-      const full = line
+      const value = decoder.decode(bytes.subarray(splitByteIndex + 1))
+      const full = decoder.decode(bytes)
+
       properties[sKey] = {
         key: sKey,
         value,
         full,
-        start: end - value.length,
+        start: start + valueCpOffset,
         end,
       }
     }

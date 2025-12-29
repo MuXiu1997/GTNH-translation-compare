@@ -4,6 +4,8 @@ import { Filetype } from '~/filetypes/filetype.ts'
 import { Languages } from '~/filetypes/language.ts'
 import { lineIterator } from '~/utils/line-iterator.ts'
 
+const decoder = new TextDecoder()
+
 export class FiletypeGTLang extends Filetype {
   #properties?: Record<string, Property>
 
@@ -25,31 +27,51 @@ export class FiletypeGTLang extends Filetype {
   private parse(): Record<string, Property> {
     const properties: Record<string, Property> = {}
     let inLanguagefileCategory = false
-    for (const [, line, , end] of lineIterator(this.content)) {
+
+    const contentBytes = new TextEncoder().encode(this.content)
+    for (const [, bytes, start, end] of lineIterator(contentBytes)) {
+      if (bytes.length === 0 || bytes[0] === 0x23) // 0x23 is '#'
+        continue
+
+      // Quick byte-level checks for category transitions
       if (!inLanguagefileCategory) {
+        const line = decoder.decode(bytes).trim()
         if (line.startsWith('languagefile {')) {
           inLanguagefileCategory = true
         }
         continue
       }
 
-      if (line.startsWith('}')) {
-        break
+      if (bytes[0] === 0x7D) { // 0x7D is '}'
+        const line = decoder.decode(bytes).trim()
+        if (line.startsWith('}')) {
+          break
+        }
       }
 
-      const splitIndex = line.indexOf('=')
-      if (splitIndex === -1) {
+      const splitByteIndex = bytes.indexOf(0x3D) // '='
+      if (splitByteIndex === -1) {
         continue
       }
-      const key = line.substring(0, splitIndex)
+
+      // Calculate code point offset from bytes
+      let valueCpOffset = 0
+      for (let i = 0; i <= splitByteIndex; i++) {
+        if ((bytes[i]! & 0xC0) !== 0x80) {
+          valueCpOffset++
+        }
+      }
+
+      const key = decoder.decode(bytes.subarray(0, splitByteIndex))
       const sKey = `gt-lang|${key}`
-      const value = line.substring(splitIndex + 1)
-      const full = line
+      const value = decoder.decode(bytes.subarray(splitByteIndex + 1))
+      const full = decoder.decode(bytes)
+
       properties[sKey] = {
         key: sKey,
         value,
         full,
-        start: end - value.length,
+        start: start + valueCpOffset,
         end,
       }
     }

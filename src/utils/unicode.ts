@@ -43,3 +43,35 @@ export function toUnicode(s: string): string {
 
   return decoder.decode(buf)
 }
+
+/**
+ * Gets the number of Unicode code points in a string up to a given UTF-16 index.
+ * Optimized: No string slicing, no array allocation.
+ * @param s The string.
+ * @param utf16Index The UTF-16 index.
+ * @returns The code point count.
+ */
+export function utf16ToCodePointIndex(s: string, utf16Index: number): number {
+  let count = 0
+  for (let i = 0; i < utf16Index; i++) {
+    count++
+    const code = s.charCodeAt(i)
+    // If it's a high surrogate and there's a following low surrogate within the range
+    if (code >= 0xD800 && code <= 0xDBFF && i + 1 < utf16Index) {
+      const next = s.charCodeAt(i + 1)
+      if (next >= 0xDC00 && next <= 0xDFFF) {
+        i++ // Skip the low surrogate
+      }
+    }
+  }
+  return count
+}
+
+/**
+ * Gets the total number of Unicode code points in a string.
+ * @param s The string.
+ * @returns The code point count.
+ */
+export function codePointLength(s: string): number {
+  return utf16ToCodePointIndex(s, s.length)
+}

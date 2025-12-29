@@ -3,8 +3,12 @@ import type { Property } from '~/filetypes/property.ts'
 import { Filetype } from '~/filetypes/filetype.ts'
 import { Languages } from '~/filetypes/language.ts'
 import { lineIterator } from '~/utils/line-iterator.ts'
+import { codePointLength } from '~/utils/unicode.ts'
 
 const PATTERN = /^(?<full>val (?<key>I18N.*?) ?= ?"(?<value>.+?)";)$/
+const decoder = new TextDecoder()
+// 'v'(0x76), 'a'(0x61), 'l'(0x6C), ' '(0x20), 'I'(0x49), '1'(0x31), '8'(0x38), 'N'(0x4E)
+const PREFIX = new Uint8Array([0x76, 0x61, 0x6C, 0x20, 0x49, 0x31, 0x38, 0x4E])
 
 export class FiletypeScript extends Filetype {
   #properties?: Record<string, Property>
@@ -26,10 +30,23 @@ export class FiletypeScript extends Filetype {
 
   private parse(): Record<string, Property> {
     const properties: Record<string, Property> = {}
-    for (const [, line, start] of lineIterator(this.content)) {
-      if (!line.startsWith('val I18N')) {
+
+    const contentBytes = new TextEncoder().encode(this.content)
+    for (const [, bytes, start] of lineIterator(contentBytes)) {
+      if (bytes.length < PREFIX.length)
         continue
+
+      let matchPrefix = true
+      for (let i = 0; i < PREFIX.length; i++) {
+        if (bytes[i] !== PREFIX[i]) {
+          matchPrefix = false
+          break
+        }
       }
+      if (!matchPrefix)
+        continue
+
+      const line = decoder.decode(bytes)
       const match = line.match(PATTERN)
       if (!match || !match.groups) {
         continue
@@ -39,14 +56,24 @@ export class FiletypeScript extends Filetype {
       const value = match.groups.value!
       const full = match.groups.full!
 
-      const valueStart = line.indexOf(`"${value}"`) + 1
+      // Find value start in bytes for efficient code point counting
+      // We look for the first '"' after '='
+      const splitByteIndex = bytes.indexOf(0x3D) // '='
+      const quoteByteIndex = bytes.indexOf(0x22, splitByteIndex) // '"'
+
+      let valueCpOffset = 0
+      for (let i = 0; i <= quoteByteIndex; i++) {
+        if ((bytes[i]! & 0xC0) !== 0x80) {
+          valueCpOffset++
+        }
+      }
 
       properties[sKey] = {
         key: sKey,
         value,
         full,
-        start: start + valueStart,
-        end: start + valueStart + value.length,
+        start: start + valueCpOffset,
+        end: start + valueCpOffset + codePointLength(value),
       }
     }
     return properties
