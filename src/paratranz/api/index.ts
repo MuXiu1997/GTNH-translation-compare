@@ -2,8 +2,10 @@ import type { AxiosCacheInstance } from 'axios-cache-interceptor'
 import type { File, ParatranzFile, StringItem } from '~/paratranz/types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
-import { consola } from 'consola'
+import { group } from '@actions/core'
+import chalk from 'chalk'
 import pLimit from 'p-limit'
+import { log } from '~/log'
 import {
   FileSchema,
   StringPageSchema,
@@ -25,56 +27,63 @@ export class ClientWrapper {
   }
 
   async getAllFiles(): Promise<File[]> {
-    const res = await this.#client.get(`projects/${this.#projectId}/files`)
-
-    if (res.cached) {
-      consola.info('getAllFiles: cache hit')
-    }
-    else {
-      consola.info('getAllFiles: cache miss')
-    }
-
-    return res.data.map((f: any) => FileSchema.parse(f))
+    const res = await this.#client.request<unknown[]>({
+      method: 'get',
+      url: `projects/${this.#projectId}/files`,
+    })
+    return res.data.map(f => FileSchema.parse(f))
   }
 
   async getFile(fileId: number): Promise<File> {
-    const res = await this.#client.get(`projects/${this.#projectId}/files/${fileId}`)
+    const res = await this.#client.request<unknown>({
+      method: 'get',
+      url: `projects/${this.#projectId}/files/${fileId}`,
+    })
     return FileSchema.parse(res.data)
   }
 
   async getStrings(fileId: number): Promise<StringItem[]> {
     const limit = pLimit(5)
-    const pageSize = 50
+    const pageSize = 100
+    const l = log.withTag('ClientWrapper.getStrings')
+    return await group(`ClientWrapper.getStrings (fileId: ${fileId})`, async () => {
+      l.debug(`Starting to fetch strings for fileId: ${fileId}`)
 
-    // Get first page to find out total page count
-    const firstPageRes = await this.#client.get(`projects/${this.#projectId}/strings`, {
-      params: { file: fileId, page: 1, pageSize },
+      // Get first page to find out total page count
+      const firstPageRes = await this.#client.request<unknown>({
+        method: 'get',
+        url: `projects/${this.#projectId}/strings`,
+        params: { file: fileId, page: 1, pageSize },
+      })
+      const firstPage = StringPageSchema.parse(firstPageRes.data)
+      const totalPages = firstPage.pageCount
+      l.info(`Fetched page [1/${totalPages}]${firstPageRes.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
+
+      const results: StringItem[] = [...firstPage.results]
+      const tasks = []
+
+      for (let page = 2; page <= totalPages; page++) {
+        tasks.push(limit(async () => {
+          l.debug(`Fetching page [${page}/${totalPages}]...`)
+          const res = await this.#client.request<unknown>({
+            method: 'get',
+            url: `projects/${this.#projectId}/strings`,
+            params: { file: fileId, page, pageSize },
+          })
+          const pageData = StringPageSchema.parse(res.data)
+          l.info(`Fetched page [${page}/${totalPages}]${res.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
+          return pageData.results
+        }))
+      }
+
+      const remainingPages = await Promise.all(tasks)
+      for (const pageResults of remainingPages) {
+        results.push(...pageResults)
+      }
+
+      l.success(`Finished fetching all strings. Total: ${results.length}`)
+      return results
     })
-    const firstPage = StringPageSchema.parse(firstPageRes.data)
-
-    const results: StringItem[] = [...firstPage.results]
-    const tasks = []
-
-    for (let page = 2; page <= firstPage.pageCount; page++) {
-      tasks.push(limit(async () => {
-        consola.debug(`[getStrings] started: fileId=${fileId}, page=${page}/${firstPage.pageCount}`)
-        const res = await this.#client.get(`projects/${this.#projectId}/strings`, {
-          params: { file: fileId, page, pageSize },
-        })
-        const pageData = StringPageSchema.parse(res.data)
-        consola.log(`[getStrings] finished: fileId=${fileId}, page=${page}/${firstPage.pageCount}, ${res.cached ? 'cached' : 'not cached'}`)
-        consola.debug(`[getStrings] finished: fileId=${fileId}, page=${page}/${firstPage.pageCount}`)
-        return pageData.results
-      }))
-    }
-
-    const remainingPages = await Promise.all(tasks)
-    for (const pageResults of remainingPages) {
-      results.push(...pageResults)
-    }
-
-    consola.info(`[getStrings] finished_all: fileId=${fileId}, totalStrings=${results.length}`)
-    return results
   }
 
   async uploadFile(paratranzFile: ParatranzFile): Promise<void> {
@@ -108,8 +117,12 @@ export class ClientWrapper {
     const blob = new Blob([content], { type: 'application/json' })
     formData.append('file', blob, fileName)
 
-    const res = await this.#client.post(`projects/${this.#projectId}/files`, formData)
-    consola.success(`createFile: path=${filePath}, file=${fileName}`)
+    const res = await this.#client.request<{ file: { id: number } }>({
+      method: 'post',
+      url: `projects/${this.#projectId}/files`,
+      data: formData,
+    })
+    log.success(`createFile: path=${filePath}, file=${fileName}`)
     return res.data.file.id
   }
 
@@ -133,15 +146,23 @@ export class ClientWrapper {
     const blob = new Blob([content], { type: 'application/json' })
     formData.append('file', blob, fileName)
 
-    await this.#client.post(`projects/${this.#projectId}/files/${fileId}`, formData)
-    consola.success(`updateFile: fileId=${fileId}, file=${fileName}`)
+    await this.#client.request<void>({
+      method: 'post',
+      url: `projects/${this.#projectId}/files/${fileId}`,
+      data: formData,
+    })
+    log.success(`updateFile: fileId=${fileId}, file=${fileName}`)
   }
 
   async #saveFileExtra(fileId: number, paratranzFile: ParatranzFile): Promise<void> {
-    await this.#client.put(`projects/${this.#projectId}/files/${fileId}`, {
-      extra: paratranzFile.fileExtra,
+    await this.#client.request<void>({
+      method: 'put',
+      url: `projects/${this.#projectId}/files/${fileId}`,
+      data: {
+        extra: paratranzFile.fileExtra,
+      },
     })
-    consola.success(`saveFileExtra: fileId=${fileId}`)
+    log.success(`saveFileExtra: fileId=${fileId}`)
   }
 
   #getFileToBeUploaded(paratranzFile: ParatranzFile): [string, string] {

@@ -1,11 +1,57 @@
+import type { AxiosError } from 'axios'
 import type { AxiosCacheInstance } from 'axios-cache-interceptor'
 import axios from 'axios'
 import { setupCache } from 'axios-cache-interceptor'
 import axiosRetry from 'axios-retry'
-import { consola } from 'consola'
+import chalk from 'chalk'
+import { get } from 'lodash-es'
+import { log } from '~/log'
 import { buildSQLiteCacheStorage } from './sqlite-cache-storage.ts'
 
+const axiosRetryLog = log.withTag('axios-retry')
+
+function getRequestInfo(error: AxiosError) {
+  const method = get(error, 'config.method', 'unknown').toUpperCase()
+  const url = get(error, 'config.url', 'unknown')
+  return { method, url }
+}
+
+function logRetryDelay(error: AxiosError, delay: number, retryCount: number) {
+  const { method, url } = getRequestInfo(error)
+  let message = ''
+  message += chalk.cyan.bold(`[${method}]`)
+  message += ' '
+  message += chalk.blue.underline(url)
+  message += ' - '
+  message += 'Calculated delay: '
+  message += chalk.yellow(`${delay.toFixed(2)}ms`)
+  message += ' for retry #'
+  message += chalk.green(retryCount)
+  axiosRetryLog.debug(message)
+}
+
+function logRetry(error: AxiosError, retryCount: number, retries: number) {
+  const { method, url } = getRequestInfo(error)
+  const retryAfter = get(error, 'response.headers.retry-after', undefined)
+  let message = ''
+  message += chalk.cyan.bold(`[${method}]`)
+  message += ' '
+  message += chalk.blue.underline(url)
+  message += ' - '
+  message += 'Retrying request ('
+  message += chalk.green(`${retryCount}/${retries}`)
+  message += ') due to '
+  message += chalk.red(error.message)
+  if (retryAfter) {
+    message += ', Retry-After: '
+    message += chalk.yellow(retryAfter)
+  }
+  axiosRetryLog.warn(message)
+}
+
 export function createHttpClient(token: string, cacheDir: string): AxiosCacheInstance {
+  const retries = 100
+
   const baseClient = axios.create({
     baseURL: 'https://paratranz.cn/api',
     headers: { Authorization: token },
@@ -17,10 +63,10 @@ export function createHttpClient(token: string, cacheDir: string): AxiosCacheIns
   })
 
   axiosRetry(cacheClient, {
-    retries: 100,
+    retries,
     retryDelay: (retryCount, error) => {
       const delay = axiosRetry.exponentialDelay(retryCount, error)
-      consola.info(`[axios-retry] Calculated delay: ${delay}ms for retry #${retryCount}`)
+      logRetryDelay(error, delay, retryCount)
       return delay
     },
     retryCondition: (error) => {
@@ -31,11 +77,9 @@ export function createHttpClient(token: string, cacheDir: string): AxiosCacheIns
       )
     },
     onRetry: (retryCount, error) => {
-      const retryAfter = error.response?.headers['retry-after']
-      consola.warn(`[axios-retry] Retrying request (${retryCount}/100) due to ${error.message}${retryAfter ? `. Retry-After: ${retryAfter}` : ''}`)
+      logRetry(error, retryCount, retries)
     },
   })
 
   return cacheClient
 }
-
