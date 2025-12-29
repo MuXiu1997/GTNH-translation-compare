@@ -2,7 +2,7 @@
   "name": "gtnh-translation-compare",
   "type": "module",
   "private": true,
-  "module": "index.ts",
+  "module": "src/index.ts",
   "scripts": {
     "lint": "eslint --fix . && tsc --noEmit",
     "postinstall": "simple-git-hooks"
