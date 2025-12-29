@@ -3,7 +3,8 @@ import type { Language } from '~/filetypes/language.ts'
 import type { ClientWrapper } from '~/paratranz/api/index.ts'
 import type { ConverterCache } from '~/paratranz/converter/cache.ts'
 import type { File, ParatranzFile, StringItem, TranslationFile } from '~/paratranz/types.ts'
-import { consola } from 'consola'
+import chalk from 'chalk'
+import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
 import { toUnicode } from '~/utils/unicode.ts'
 
@@ -16,14 +17,12 @@ export class Converter {
 
   async toTranslationFile(paratranzFile: File): Promise<TranslationFile> {
     const cached = this.cache.get(paratranzFile)
-    if (cached) {
-      consola.info(`cache hit: ${paratranzFile.name}`)
+    const l = log.withTag('Converter.toTranslationFile')
+    l.info(`Converter.toTranslationFile(${chalk.blueBright.bold(paratranzFile.name)}) ${chalk.gray('[')}${cached ? chalk.green('cache hit') : chalk.yellow('cache miss')}${chalk.gray(']')}`)
+    if (cached)
       return cached
-    }
-
     const translationFile = await this.toTranslationFileUncached(paratranzFile)
     this.cache.set(paratranzFile, translationFile)
-    consola.info(`cache miss: ${paratranzFile.name}`)
     return translationFile
   }
 
@@ -107,7 +106,6 @@ export class Converter {
       targetRelpath,
     }
 
-    consola.info(`toParatranzFile: ${fileName}`)
     return {
       fileName,
       fileExtra,
@@ -115,4 +113,3 @@ export class Converter {
     }
   }
 }
-

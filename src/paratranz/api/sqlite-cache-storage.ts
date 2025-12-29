@@ -1,8 +1,8 @@
 import type { AxiosStorage, StorageValue } from 'axios-cache-interceptor'
-import { buildStorage } from 'axios-cache-interceptor'
-import { Database } from 'bun:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
+import { buildStorage } from 'axios-cache-interceptor'
+import { Database } from 'bun:sqlite'
 
 export function buildSQLiteCacheStorage(cacheDir: string): AxiosStorage {
   if (!fs.existsSync(cacheDir)) {
