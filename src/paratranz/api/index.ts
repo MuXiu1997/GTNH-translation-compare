@@ -57,21 +57,21 @@ export class ClientWrapper {
       })
       const firstPage = StringPageSchema.parse(firstPageRes.data)
       const totalPages = firstPage.pageCount
-      l.info(`Fetched page [1/${totalPages}]${firstPageRes.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
+      l.info(`Fetched page ${chalk.magentaBright.bold(1)} / ${chalk.gray(totalPages)}${firstPageRes.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
 
       const results: StringItem[] = [...firstPage.results]
       const tasks = []
 
       for (let page = 2; page <= totalPages; page++) {
         tasks.push(limit(async () => {
-          l.debug(`Fetching page [${page}/${totalPages}]...`)
+          l.debug(`Fetching page ${chalk.magentaBright.bold(page)} / ${chalk.gray(totalPages)} ...`)
           const res = await this.#client.request<unknown>({
             method: 'get',
             url: `projects/${this.#projectId}/strings`,
             params: { file: fileId, page, pageSize },
           })
           const pageData = StringPageSchema.parse(res.data)
-          l.info(`Fetched page [${page}/${totalPages}]${res.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
+          l.info(`Fetched page ${chalk.magentaBright.bold(page)} / ${chalk.gray(totalPages)}${res.cached ? ` ${chalk.gray('[')}${chalk.green('cache hit')}${chalk.gray(']')}` : ''}`)
           return pageData.results
         }))
       }
