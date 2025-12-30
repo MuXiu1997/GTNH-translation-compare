@@ -1,10 +1,12 @@
+import type { Filetype } from '~/filetypes/filetype.ts'
 import type { TranslationFile } from '~/paratranz/types.ts'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { $ } from 'bun'
+import chalk from 'chalk'
 import { Builtins, Cli, Command, Option } from 'clipanion'
-import { consola } from 'consola'
 import { FiletypeGTLang } from '~/filetypes/filetype-gt-lang.ts'
 import { FiletypeLang } from '~/filetypes/filetype-lang.ts'
 import { Languages } from '~/filetypes/language.ts'
@@ -33,9 +35,14 @@ abstract class BaseCommand extends Command {
   )
 
   dryRun = Option.Boolean('--dry-run', false, { description: 'Do not upload/commit changes' })
+  protected dryRunDir?: string
 
   async execute() {
     try {
+      if (this.dryRun) {
+        this.dryRunDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gtnh-translation-compare-'))
+        log.withTag('Dry Run').info(`Created temporary directory: ${chalk.yellowBright.underline(this.dryRunDir)}`)
+      }
       await this.run()
     }
     catch (error) {
@@ -47,13 +54,14 @@ abstract class BaseCommand extends Command {
   abstract run(): Promise<void>
 
   protected async paratranzToTranslation(
+    repoPath: string,
     filter: ParatranzFilenameFilter,
     afterToTranslationFileCallback?: AfterToTranslationFileCallback,
     raiseWhenEmpty?: Error,
     message?: string,
-    repoPath?: string,
     issue?: string,
   ): Promise<void> {
+    const l = log.withTag(`${this.constructor.name}.paratranzToTranslation`)
     const translationFiles: TranslationFile[] = []
     const allFiles = await this.client.getAllFiles()
 
@@ -72,29 +80,14 @@ abstract class BaseCommand extends Command {
       return
     }
 
-    if (!repoPath) {
-      for (const translationFile of translationFiles) {
-        consola.log('#'.repeat(80))
-        consola.log(`# ${translationFile.relpath}`)
-        consola.log('#'.repeat(80))
-        consola.log(translationFile.content, '\n\n')
-      }
-      return
-    }
-
     const translationFilepaths: string[] = []
     for (const translationFile of translationFiles) {
       if (!translationFile.relpath) {
-        consola.error(`Translation file ${translationFile.name} has empty relpath, skipping...`)
+        l.warn(`Translation file ${chalk.blueBright.bold(translationFile.name)} has empty relpath, skipping...`)
         continue
       }
       const translationFilepath = path.resolve(repoPath, translationFile.relpath)
       translationFilepaths.push(translationFilepath)
-
-      if (this.dryRun) {
-        log.info(`[Dry Run] Writing file: ${translationFilepath}`)
-        continue
-      }
 
       await fs.mkdir(path.dirname(translationFilepath), { recursive: true })
       try {
@@ -106,6 +99,7 @@ abstract class BaseCommand extends Command {
         }
         throw error
       }
+      l.success(`Translation file ${chalk.blueBright.bold(translationFile.name)} written to ${chalk.yellowBright.underline(translationFilepath)}`)
     }
 
     if (message) {
@@ -119,16 +113,18 @@ abstract class BaseCommand extends Command {
     }
   }
 
-  protected async uploadFile(file: any): Promise<void> {
+  protected async uploadFile(file: Filetype): Promise<void> {
+    const l = log.withTag(`${this.constructor.name}.uploadFile`)
     const paratranzFile = await this.converter.toParatranzFile(file)
     if (this.dryRun) {
-      const dryRunPath = path.resolve(process.cwd(), '.dry-run.local', `${paratranzFile.fileName}.json`)
+      const dryRunPath = path.resolve(this.dryRunDir!, `${paratranzFile.fileName}.json`)
       await fs.mkdir(path.dirname(dryRunPath), { recursive: true })
       await fs.writeFile(dryRunPath, JSON.stringify(paratranzFile, null, 2))
-      log.info(`[Dry Run] Writing Paratranz file: ${dryRunPath}`)
+      l.info(`${chalk.gray.bold('(Dry Run)')} ${this.constructor.name}.uploadFile(${chalk.blueBright.bold(paratranzFile.fileName)}) - dry run file saved to ${chalk.yellowBright.underline(dryRunPath)}`)
       return
     }
     await this.client.uploadFile(paratranzFile)
+    log.withTag(`${this.constructor.name}.uploadFile`).success(`${chalk.green.bold(paratranzFile.fileName)} uploaded to Paratranz`)
   }
 
   private async gitCommit(
@@ -138,16 +134,7 @@ abstract class BaseCommand extends Command {
     issue?: string,
     closeIssueInCommitMessage = true,
   ): Promise<void> {
-    if (this.dryRun) {
-      log.info(`[Dry Run] Git commit: ${message}`)
-      return
-    }
-
-    await $`git config user.name "github-actions[bot]"`.cwd(gitRoot)
-    await $`git config user.email "41898282+github-actions[bot]@users.noreply.github.com"`.cwd(gitRoot)
-
-    await $`git add ${paths}`.cwd(gitRoot)
-
+    const l = log.withTag(`${this.constructor.name}.gitCommit`)
     let commitMessage = message
     if (issue && closeIssueInCommitMessage) {
       commitMessage += `\n\nclosed #${issue}`
@@ -163,8 +150,16 @@ abstract class BaseCommand extends Command {
       }
     }
 
+    if (this.dryRun) {
+      l.success(`${chalk.gray.bold('(Dry Run)')} Committed: ${chalk.green.underline(JSON.stringify(commitMessage))}`)
+      return
+    }
+
+    await $`git config user.name "github-actions[bot]"`.cwd(gitRoot)
+    await $`git config user.email "41898282+github-actions[bot]@users.noreply.github.com"`.cwd(gitRoot)
+    await $`git add ${paths}`.cwd(gitRoot)
     await $`git commit -m ${commitMessage}`.cwd(gitRoot)
-    consola.success(`Committed: ${message}`)
+    l.success(`Committed: ${chalk.green.underline(JSON.stringify(commitMessage))}`)
   }
 }
 
@@ -174,18 +169,18 @@ class FromParatranzQuestBookCommand extends BaseCommand {
     description: 'Update quest book from Paratranz',
   })
 
-  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository' })
+  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository', required: true })
   issue = Option.String('-i,--issue', { description: 'Issue ID' })
   message = Option.String('-m,--message', { description: 'Commit message' })
 
   async run() {
     const filter: ParatranzFilenameFilter = name => name === `${settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH}.json`
     await this.paratranzToTranslation(
+      this.repoPath,
       filter,
       undefined,
       new Error('No quest book file found'),
       this.message ?? '[自动化] 更新 任务书',
-      this.repoPath,
       this.issue,
     )
   }
@@ -197,7 +192,7 @@ class FromParatranzLangAndZsCommand extends BaseCommand {
     description: 'Update lang and zs files from Paratranz',
   })
 
-  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository' })
+  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository', required: true })
   issue = Option.String('-i,--issue', { description: 'Issue ID' })
   message = Option.String('-m,--message', { description: 'Commit message' })
 
@@ -211,11 +206,11 @@ class FromParatranzLangAndZsCommand extends BaseCommand {
     }
 
     await this.paratranzToTranslation(
+      this.repoPath,
       filter,
       undefined,
       new Error('No lang or zs file found'),
       this.message ?? '[自动化] 更新 语言文件 + 脚本',
-      this.repoPath,
       this.issue,
     )
   }
@@ -227,7 +222,7 @@ class FromParatranzGtLangCommand extends BaseCommand {
     description: 'Update GT lang files from Paratranz',
   })
 
-  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository' })
+  repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository', required: true })
   issue = Option.String('-i,--issue', { description: 'Issue ID' })
   message = Option.String('-m,--message', { description: 'Commit message' })
 
@@ -241,11 +236,11 @@ class FromParatranzGtLangCommand extends BaseCommand {
     }
 
     await this.paratranzToTranslation(
+      this.repoPath,
       filter,
       afterToTranslationFileCallback,
       new Error('No gt lang file found'),
       this.message ?? '[自动化] 更新 GT 语言文件',
-      this.repoPath,
       this.issue,
     )
   }
