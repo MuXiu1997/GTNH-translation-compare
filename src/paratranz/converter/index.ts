@@ -90,7 +90,14 @@ export class Converter {
       translation: '',
     }))
 
-    const paratranzProperties: Record<string, { key: string, start: number, end: number }> = {}
+    // Try to merge old translations
+    const remoteFileId = await this.client.findFileIdByName(fileName)
+    if (remoteFileId != null) {
+      const oldStrings = await this.client.getStrings(remoteFileId)
+      this.#mergeStrings(stringItems, oldStrings)
+    }
+
+    const paratranzProperties: ParatranzFile['fileExtra']['properties'] = {}
     for (const [key, p] of Object.entries(file.properties)) {
       paratranzProperties[key] = {
         key: p.key,
@@ -110,6 +117,21 @@ export class Converter {
       fileName,
       fileExtra,
       stringItems,
+    }
+  }
+
+  #mergeStrings(newItems: StringItem[], oldItems: readonly StringItem[]) {
+    const oldStringsMap = new Map(oldItems.map(s => [s.key, s]))
+
+    // Merge old translations if they match original text
+    for (const s of newItems) {
+      const old = oldStringsMap.get(s.key)
+      if (old && old.original === s.original) {
+        if (!s.translation && old.translation) {
+          s.translation = old.translation
+          s.stage = 1
+        }
+      }
     }
   }
 }

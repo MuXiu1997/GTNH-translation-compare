@@ -87,23 +87,26 @@ export class ClientWrapper {
   }
 
   async uploadFile(paratranzFile: ParatranzFile): Promise<void> {
-    const fileId = await this.#findFileIdByName(paratranzFile.fileName)
+    let fileId = await this.findFileIdByName(paratranzFile.fileName)
+    let action: 'create' | 'update'
 
-    if (fileId === undefined) {
-      await this.#createFile(paratranzFile)
+    if (fileId == null) {
+      fileId = await this.#createFile(paratranzFile)
+      action = 'create'
     }
     else {
       await this.#updateFile(fileId, paratranzFile)
+      action = 'update'
     }
 
     // Always update extra
-    const finalFileId = fileId ?? await this.#findFileIdByName(paratranzFile.fileName)
-    if (finalFileId !== undefined) {
-      await this.#saveFileExtra(finalFileId, paratranzFile)
+    if (fileId == null) {
+      throw new Error(`Failed to get fileId for [${paratranzFile.fileName}] after ${action}`)
     }
+    await this.#saveFileExtra(fileId, paratranzFile)
   }
 
-  async #findFileIdByName(name: string): Promise<number | undefined> {
+  async findFileIdByName(name: string): Promise<number | undefined> {
     const files = await this.getAllFiles()
     return files.find(f => f.name === name)?.id
   }
@@ -122,25 +125,12 @@ export class ClientWrapper {
       url: `projects/${this.#projectId}/files`,
       data: formData,
     })
-    log.success(`createFile: path=${filePath}, file=${fileName}`)
+    const l = log.withTag('ClientWrapper.#createFile')
+    l.success(`ClientWrapper.#createFile(${chalk.blueBright.bold(paratranzFile.fileName)})`)
     return res.data.file.id
   }
 
   async #updateFile(fileId: number, paratranzFile: ParatranzFile): Promise<void> {
-    const oldStrings = await this.getStrings(fileId)
-    const oldStringsMap = new Map(oldStrings.map(s => [s.key, s]))
-
-    // Merge old translations if they match original text
-    for (const s of paratranzFile.stringItems) {
-      const old = oldStringsMap.get(s.key)
-      if (old && old.original === s.original) {
-        if (!s.translation && old.translation) {
-          s.translation = old.translation
-          s.stage = 1
-        }
-      }
-    }
-
     const [fileName, content] = this.#getFileToBeUploaded(paratranzFile)
     const formData = new FormData()
     const blob = new Blob([content], { type: 'application/json' })
@@ -151,7 +141,8 @@ export class ClientWrapper {
       url: `projects/${this.#projectId}/files/${fileId}`,
       data: formData,
     })
-    log.success(`updateFile: fileId=${fileId}, file=${fileName}`)
+    const l = log.withTag('ClientWrapper.#updateFile')
+    l.success(`ClientWrapper.#updateFile(${chalk.blueBright.bold(paratranzFile.fileName)}, fileId=${chalk.green(fileId)})`)
   }
 
   async #saveFileExtra(fileId: number, paratranzFile: ParatranzFile): Promise<void> {
@@ -162,18 +153,14 @@ export class ClientWrapper {
         extra: paratranzFile.fileExtra,
       },
     })
-    log.success(`saveFileExtra: fileId=${fileId}`)
+    const l = log.withTag('ClientWrapper.#saveFileExtra')
+    l.success(`ClientWrapper.#saveFileExtra(${chalk.blueBright.bold(paratranzFile.fileName)}, fileId=${chalk.green(fileId)})`)
   }
 
   #getFileToBeUploaded(paratranzFile: ParatranzFile): [string, string] {
     return [
       path.basename(paratranzFile.fileName),
-      JSON.stringify(paratranzFile.stringItems.map((s) => {
-        const item: any = { ...s }
-        // Clean undefined fields for API
-        Object.keys(item).forEach(key => item[key] === undefined && delete item[key])
-        return item
-      })),
+      JSON.stringify(paratranzFile.stringItems),
     ]
   }
 }
