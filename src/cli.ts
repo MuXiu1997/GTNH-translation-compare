@@ -281,18 +281,17 @@ class ToParatranzLangAndZsCommand extends BaseCommand {
     description: 'Upload lang and zs files to Paratranz',
   })
 
-  modpackPath = Option.String({ name: 'modpack-path', required: true })
+  modpackPath = Option.String('-m,--modpack-path', { description: 'Path to the modpack', required: true })
 
   async run() {
     const modpack = new ModPack(this.modpackPath)
-    const limit = (await import('p-limit')).default(10)
 
-    const tasks = [
-      ...modpack.langFiles.map(file => limit(() => this.uploadFile(file))),
-      ...modpack.scriptFiles.map(file => limit(() => this.uploadFile(file))),
-    ]
-
-    await Promise.all(tasks)
+    for (const file of modpack.langFiles) {
+      await this.uploadFile(file)
+    }
+    for (const file of modpack.scriptFiles) {
+      await this.uploadFile(file)
+    }
   }
 }
 

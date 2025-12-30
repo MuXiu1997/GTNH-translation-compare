@@ -11,21 +11,7 @@ export class ModPack {
   #scriptFiles?: FiletypeScript[]
 
   constructor(packPath: string) {
-    const modsGlob = new Glob('mods')
-    const nestedModsGlob = new Glob('*/mods')
-
-    if (Array.from(modsGlob.scanSync({ cwd: packPath, onlyFiles: false })).length === 1) {
-      this.#packPath = packPath
-    }
-    else {
-      const nested = Array.from(nestedModsGlob.scanSync({ cwd: packPath, onlyFiles: false }))
-      if (nested.length === 1) {
-        this.#packPath = path.join(packPath, path.dirname(nested[0]!))
-      }
-      else {
-        this.#packPath = packPath
-      }
-    }
+    this.#packPath = packPath
   }
 
   get langFiles(): FiletypeLang[] {
