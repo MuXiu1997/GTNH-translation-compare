@@ -94,7 +94,9 @@ export class Converter {
     const remoteFileId = await this.client.findFileIdByName(fileName)
     if (remoteFileId != null) {
       const oldStrings = await this.client.getStrings(remoteFileId)
-      this.#mergeStrings(stringItems, oldStrings)
+      const mergedCount = this.#mergeStrings(stringItems, oldStrings)
+      const l = log.withTag('Converter.toParatranzFile')
+      l.info(`Merged ${chalk.magentaBright.bold(mergedCount)} / ${chalk.gray(stringItems.length)} translations for ${chalk.blueBright.bold(fileName)}`)
     }
 
     const paratranzProperties: ParatranzFile['fileExtra']['properties'] = {}
@@ -120,18 +122,21 @@ export class Converter {
     }
   }
 
-  #mergeStrings(newItems: StringItem[], oldItems: readonly StringItem[]) {
+  #mergeStrings(newItems: StringItem[], oldItems: readonly StringItem[]): number {
     const oldStringsMap = new Map(oldItems.map(s => [s.key, s]))
+    let mergedCount = 0
 
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      if (old && old.original === s.original) {
-        if (!s.translation && old.translation) {
+      if (old && old.original === s.original && old.translation) {
+        if (s.translation !== old.translation) {
           s.translation = old.translation
-          s.stage = 1
+          s.stage = old.stage
+          mergedCount++
         }
       }
     }
+    return mergedCount
   }
 }
