@@ -81,5 +81,26 @@ export function createHttpClient(token: string, cacheDir: string): AxiosCacheIns
     },
   })
 
+  cacheClient.interceptors.response.use(
+    response => response,
+    (error) => {
+      if (axios.isAxiosError(error) && typeof error.response?.status === 'number' && error.response.status >= 400 && error.response.status < 500 && error.response.status !== 429) {
+        log.error(`Request failed with status code ${error.response.status}. Response body: ${JSON.stringify(error.response.data)}`)
+        const { method, url } = getRequestInfo(error)
+        let message = ''
+        message += chalk.cyan.bold(`[${method}]`)
+        message += ' '
+        message += chalk.blue.underline(url)
+        message += ' - '
+        message += 'Request failed with status code '
+        message += chalk.red(error.response.status)
+        message += '. Response body: '
+        message += chalk.yellow(JSON.stringify(error.response.data))
+        log.error(message)
+      }
+      return Promise.reject(error)
+    },
+  )
+
   return cacheClient
 }

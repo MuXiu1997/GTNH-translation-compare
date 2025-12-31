@@ -108,7 +108,8 @@ export class ClientWrapper {
 
   async findFileIdByName(name: string): Promise<number | undefined> {
     const files = await this.getAllFiles()
-    return files.find(f => f.name === name)?.id
+    const lowerName = name.toLowerCase()
+    return files.find(f => f.name.toLowerCase() === lowerName)?.id
   }
 
   async #createFile(paratranzFile: ParatranzFile): Promise<number> {
