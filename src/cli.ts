@@ -180,7 +180,7 @@ class FromParatranzQuestBookCommand extends BaseCommand {
       filter,
       undefined,
       new Error('No quest book file found'),
-      this.message ?? '[自动化] 更新 任务书',
+      this.message,
       this.issue,
     )
   }
@@ -210,7 +210,7 @@ class FromParatranzLangAndZsCommand extends BaseCommand {
       filter,
       undefined,
       new Error('No lang or zs file found'),
-      this.message ?? '[自动化] 更新 语言文件 + 脚本',
+      this.message,
       this.issue,
     )
   }
@@ -240,7 +240,7 @@ class FromParatranzGtLangCommand extends BaseCommand {
       filter,
       afterToTranslationFileCallback,
       new Error('No gt lang file found'),
-      this.message ?? '[自动化] 更新 GT 语言文件',
+      this.message,
       this.issue,
     )
   }
