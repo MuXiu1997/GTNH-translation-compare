@@ -66,14 +66,14 @@ export class GTLangNewlineRule implements NewlineRule {
   }
 }
 
-export class NewlineRuleManager {
-  private static rules: NewlineRule[] = [
+export class NewlineRules {
+  private static readonly all: NewlineRule[] = [
     new ScriptNewlineRule(),
     new QuestNewlineRule(),
     new GTLangNewlineRule(),
   ]
 
-  static getRule(relpath: string): NewlineRule | undefined {
-    return this.rules.find(rule => rule.match(relpath))
+  static find(relpath: string): NewlineRule | undefined {
+    return this.all.find(rule => rule.match(relpath))
   }
 }

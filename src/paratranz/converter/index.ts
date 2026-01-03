@@ -6,7 +6,7 @@ import type { File, ParatranzFile, StringItem, TranslationFile } from '~/paratra
 import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
-import { NewlineRuleManager } from './rules.ts'
+import { NewlineRules } from './rules.ts'
 
 export class Converter {
   constructor(
@@ -36,7 +36,7 @@ export class Converter {
     const sortedProperties = Object.entries(fileExtra.properties)
       .sort(([, a], [, b]) => a.start - b.start)
 
-    const newlineRule = NewlineRuleManager.getRule(fileExtra.targetRelpath)
+    const newlineRule = NewlineRules.find(fileExtra.targetRelpath)
 
     const result = []
     let lastEnd = 0
@@ -85,7 +85,7 @@ export class Converter {
       translation: '',
     }))
 
-    const newlineRule = NewlineRuleManager.getRule(targetRelpath)
+    const newlineRule = NewlineRules.find(targetRelpath)
     if (newlineRule) {
       stringItems.forEach((item) => {
         item.original = newlineRule.toParatranz(item.original)
