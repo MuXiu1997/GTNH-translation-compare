@@ -63,11 +63,8 @@ export class Converter {
     result.push(...originalContent.slice(lastEnd))
 
     let resultString = result.join('')
-    if (fileExtra.targetRelpath.startsWith('scripts/')) {
-      resultString = resultString.replace(
-        'val _I18N_Lang = "en_US";',
-        `val _I18N_Lang = "${this.targetLang}";`,
-      )
+    if (newlineRule?.postProcess) {
+      resultString = newlineRule.postProcess(resultString, this.targetLang)
     }
 
     return {

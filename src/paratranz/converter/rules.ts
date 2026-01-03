@@ -3,55 +3,64 @@ import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
 
 export interface NewlineRule {
-  /** 匹配文件路径 */
+  /** Match the file path */
   match: (relpath: string) => boolean
-  /** 导入 Paratranz 时的转换 (占位符 -> \n) */
+  /** Conversion when importing to Paratranz (placeholder -> \n) */
   toParatranz: (text: string) => string
-  /** 从 Paratranz 导出时的转换 (\n -> 占位符) */
+  /** Conversion when exporting from Paratranz (\n -> placeholder) */
   fromParatranz: (text: string) => string
+  /** Optional post-processing for the entire file content after assembly */
+  postProcess?: (text: string, targetLang: string) => string
 }
 
 export class ScriptNewlineRule implements NewlineRule {
-  match(relpath: string): boolean {
+  match = (relpath: string): boolean => {
     return relpath.startsWith('scripts/')
   }
 
-  toParatranz(text: string): string {
+  toParatranz = (text: string): string => {
     return text.replaceAll('<BR>', '\n')
   }
 
-  fromParatranz(text: string): string {
+  fromParatranz = (text: string): string => {
     // Convert each part separated by \n to unicode, then join back with <BR>
     return text.split('\n')
       .map(part => toUnicode(part))
       .join('<BR>')
   }
+
+  postProcess = (text: string, targetLang: string): string => {
+    return text.replace(
+      'val _I18N_Lang = "en_US";',
+      `val _I18N_Lang = "${targetLang}";`,
+    )
+  }
 }
 
 export class QuestNewlineRule implements NewlineRule {
-  match(relpath: string): boolean {
+  match = (relpath: string): boolean => {
     return relpath.startsWith(dirname(settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH))
   }
 
-  toParatranz(text: string): string {
+  toParatranz = (text: string): string => {
     return text.replaceAll('%n', '\n')
   }
 
-  fromParatranz(text: string): string {
+  fromParatranz = (text: string): string => {
     return text.replaceAll('\n', '%n')
   }
 }
 
 export class GTLangNewlineRule implements NewlineRule {
-  match(relpath: string): boolean {
+  match = (relpath: string): boolean => {
     return relpath.endsWith('GregTech.lang')
   }
 
-  toParatranz(text: string): string {
+  toParatranz = (text: string): string => {
     return text.replaceAll('<BR>', '\n')
   }
 
-  fromParatranz(text: string): string {
+  fromParatranz = (text: string): string => {
     return text.replaceAll('\n', '<BR>')
   }
 }
