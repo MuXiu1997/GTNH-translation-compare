@@ -1,3 +1,4 @@
+import type { Language } from '~/filetypes/language.ts'
 import { dirname } from 'node:path'
 import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
@@ -10,7 +11,7 @@ export interface NewlineRule {
   /** Conversion when exporting from Paratranz (\n -> placeholder) */
   fromParatranz: (text: string) => string
   /** Optional post-processing for the entire file content after assembly */
-  postProcess?: (text: string, targetLang: string) => string
+  postProcess?: (text: string, targetLang: Language) => string
 }
 
 export class ScriptNewlineRule implements NewlineRule {
@@ -29,7 +30,7 @@ export class ScriptNewlineRule implements NewlineRule {
       .join('<BR>')
   }
 
-  postProcess = (text: string, targetLang: string): string => {
+  postProcess = (text: string, targetLang: Language): string => {
     return text.replace(
       'val _I18N_Lang = "en_US";',
       `val _I18N_Lang = "${targetLang}";`,
