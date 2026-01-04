@@ -6,7 +6,7 @@ import type { File, ParatranzFile, StringItem, TranslationFile } from '~/paratra
 import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
-import { toUnicode } from '~/utils/unicode.ts'
+import { NewlineRules } from './rules.ts'
 
 export class Converter {
   constructor(
@@ -36,7 +36,8 @@ export class Converter {
     const sortedProperties = Object.entries(fileExtra.properties)
       .sort(([, a], [, b]) => a.start - b.start)
 
-    const isScript = fileExtra.targetRelpath.startsWith('scripts/')
+    const newlineRule = NewlineRules.find(fileExtra.targetRelpath)
+
     const result = []
     let lastEnd = 0
 
@@ -49,11 +50,8 @@ export class Converter {
 
       let translation = stringItem.translation
       if (translation) {
-        if (isScript) {
-          // Convert each part separated by <BR> to unicode, then join back with <BR>
-          translation = translation.split('<BR>')
-            .map(part => toUnicode(part))
-            .join('<BR>')
+        if (newlineRule) {
+          translation = newlineRule.fromParatranz(translation)
         }
         result.push(...translation)
       }
@@ -65,11 +63,8 @@ export class Converter {
     result.push(...originalContent.slice(lastEnd))
 
     let resultString = result.join('')
-    if (isScript) {
-      resultString = resultString.replace(
-        'val _I18N_Lang = "en_US";',
-        `val _I18N_Lang = "${this.targetLang}";`,
-      )
+    if (newlineRule?.postProcess) {
+      resultString = newlineRule.postProcess(resultString, this.targetLang)
     }
 
     return {
@@ -89,6 +84,13 @@ export class Converter {
       context: p.full,
       translation: '',
     }))
+
+    const newlineRule = NewlineRules.find(targetRelpath)
+    if (newlineRule) {
+      stringItems.forEach((item) => {
+        item.original = newlineRule.toParatranz(item.original)
+      })
+    }
 
     // Try to merge old translations
     const remoteFileId = await this.client.findFileIdByName(fileName)
