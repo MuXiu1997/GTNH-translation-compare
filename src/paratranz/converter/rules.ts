@@ -20,7 +20,7 @@ export class ScriptNewlineRule implements NewlineRule {
   }
 
   toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n')
+    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
   }
 
   fromParatranz = (text: string): string => {
@@ -58,7 +58,7 @@ export class GTLangNewlineRule implements NewlineRule {
   }
 
   toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n')
+    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
   }
 
   fromParatranz = (text: string): string => {
