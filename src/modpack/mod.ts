@@ -24,21 +24,83 @@ export class Mod {
       if (!entry) {
         return '__no-modinfo'
       }
-      const modInfoJson = new TextDecoder().decode(entry.getData())
-      const modInfo = JSON.parse(modInfoJson.trim())
-      let modList = modInfo
-      if (modInfo && typeof modInfo === 'object' && !Array.isArray(modInfo)) {
-        modList = modInfo.modList || []
+      const modInfoRaw = new TextDecoder().decode(entry.getData())
+
+      let modInfo: any
+      try {
+        modInfo = JSON.parse(modInfoRaw.trim())
       }
-      if (!Array.isArray(modList) || modList.length === 0) {
-        return '__no-modinfo'
+      catch {
+        // Handle cases where description contains unescaped newlines
+        // This is common in some old Minecraft mods' mcmod.info
+        const escaped = this.escapeNewlinesInStrings(modInfoRaw.trim())
+        modInfo = JSON.parse(escaped)
       }
-      const firstModName = modList[0].name || '__no-modinfo'
-      return replaceIllegalCharacters(firstModName)
+
+      let modList: any[] = []
+      if (Array.isArray(modInfo)) {
+        modList = modInfo
+      }
+      else if (modInfo && typeof modInfo === 'object') {
+        if (Array.isArray(modInfo.modList)) {
+          modList = modInfo.modList
+        }
+        else {
+          modList = [modInfo]
+        }
+      }
+
+      if (modList.length > 0) {
+        const firstMod = modList[0]
+        const name = firstMod.name || '__no-modinfo'
+        return replaceIllegalCharacters(name)
+      }
+      return '__no-modinfo'
     }
     catch {
       return '__no-modinfo'
     }
+  }
+
+  private escapeNewlinesInStrings(json: string): string {
+    let result = ''
+    let inString = false
+    let isEscaped = false
+
+    for (let i = 0; i < json.length; i++) {
+      const char = json[i]!
+
+      if (inString) {
+        if (isEscaped) {
+          result += char
+          isEscaped = false
+        }
+        else if (char === '\\') {
+          result += char
+          isEscaped = true
+        }
+        else if (char === '"') {
+          result += char
+          inString = false
+        }
+        else if (char === '\n') {
+          result += '\\n'
+        }
+        else if (char === '\r') {
+          // Skip \r, we only care about \n for escaping
+        }
+        else {
+          result += char
+        }
+      }
+      else {
+        if (char === '"') {
+          inString = true
+        }
+        result += char
+      }
+    }
+    return result
   }
 
   get langFiles(): Record<string, string> {
