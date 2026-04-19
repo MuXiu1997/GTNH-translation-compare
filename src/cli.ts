@@ -277,9 +277,10 @@ class ToParatranzLangAndZsCommand extends BaseCommand {
   })
 
   modpackPath = Option.String('-m,--modpack-path', { description: 'Path to the modpack', required: true })
+  extraLangs = Option.Array('-e,--extra-lang', { description: 'Glob pattern for additional lang files to upload, relative to --modpack-path. May be repeated. Example: -e "config/txloader/**/en_US.lang"' })
 
   async run() {
-    const modpack = new ModPack(this.modpackPath)
+    const modpack = new ModPack(this.modpackPath, this.extraLangs)
 
     for (const file of modpack.langFiles) {
       await this.uploadFile(file)
