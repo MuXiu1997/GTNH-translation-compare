@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { Glob } from 'bun'
+import { uniqBy } from 'lodash-es'
 import { FiletypeLang, FiletypeScript } from '~/filetypes/index.ts'
 import { Mod } from '~/modpack/mod.ts'
 import { ensureLf } from '~/utils/file.ts'
@@ -18,7 +19,10 @@ export class ModPack {
 
   get langFiles(): FiletypeLang[] {
     if (this.#langFiles === undefined) {
-      this.#langFiles = this.parseLangFiles()
+      this.#langFiles = uniqBy(
+        [...this.parseLangFiles(), ...this.parseExtraLangFiles()],
+        file => file.relpath,
+      )
     }
     return this.#langFiles
   }
@@ -44,16 +48,22 @@ export class ModPack {
         )
       }
     }
-    if (this.#extraLangs) {
-      for (const extraLang of this.#extraLangs) {
-        const extraLangGlob = new Glob(extraLang)
-        for (const extraLangRelativePath of extraLangGlob.scanSync({ cwd: this.#packPath })) {
-          const content = ensureLf(fs.readFileSync(path.join(this.#packPath, extraLangRelativePath), 'utf-8'))
+    return langFiles
+  }
 
-          langFiles.push(
-            new FiletypeLang(extraLangRelativePath, content),
-          )
-        }
+  private parseExtraLangFiles(): FiletypeLang[] {
+    if (!this.#extraLangs) {
+      return []
+    }
+    const langFiles: FiletypeLang[] = []
+    for (const extraLang of this.#extraLangs) {
+      const extraLangGlob = new Glob(extraLang)
+      for (const extraLangRelativePath of extraLangGlob.scanSync({ cwd: this.#packPath })) {
+        const content = ensureLf(fs.readFileSync(path.join(this.#packPath, extraLangRelativePath), 'utf-8'))
+
+        langFiles.push(
+          new FiletypeLang(extraLangRelativePath, content),
+        )
       }
     }
     return langFiles
