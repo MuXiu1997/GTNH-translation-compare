@@ -7,11 +7,13 @@ import { ensureLf } from '~/utils/file.ts'
 
 export class ModPack {
   readonly #packPath: string
+  readonly #extraLangs?: string[]
   #langFiles?: FiletypeLang[]
   #scriptFiles?: FiletypeScript[]
 
-  constructor(packPath: string) {
+  constructor(packPath: string, extraLangs?: string[]) {
     this.#packPath = packPath
+    this.#extraLangs = extraLangs
   }
 
   get langFiles(): FiletypeLang[] {
@@ -40,6 +42,18 @@ export class ModPack {
             content,
           ),
         )
+      }
+    }
+    if (this.#extraLangs) {
+      for (const extraLang of this.#extraLangs) {
+        const extraLangGlob = new Glob(extraLang)
+        for (const extraLangRelativePath of extraLangGlob.scanSync({ cwd: this.#packPath })) {
+          const content = ensureLf(fs.readFileSync(path.join(this.#packPath, extraLangRelativePath), 'utf-8'))
+
+          langFiles.push(
+            new FiletypeLang(extraLangRelativePath, content),
+          )
+        }
       }
     }
     return langFiles
