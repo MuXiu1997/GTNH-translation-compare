@@ -121,8 +121,9 @@ export function resolveNewlineForm(
   key: string,
   fallback: NewlineForm | undefined,
 ): NewlineForm | undefined {
+  const normalizedKey = key.toLowerCase()
   return forms.entries[key]
-    ?? (key.toLowerCase().includes('research_page') ? '<BR>' : forms.default)
+    ?? (normalizedKey.includes('research_page') || normalizedKey.includes('research.page') ? '<BR>' : forms.default)
     ?? fallback
 }
 

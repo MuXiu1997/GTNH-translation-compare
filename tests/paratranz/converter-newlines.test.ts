@@ -31,8 +31,9 @@ describe('newline conversion helpers', () => {
     expect(restoreNewlines('a\nb', '%n')).toBe('a%nb')
   })
 
-  it('uses research_page BR fallback before file fallback', () => {
+  it('uses research page BR fallback before file fallback', () => {
     expect(resolveNewlineForm({ default: '\\n', entries: {} }, 'lang|foo.research_page.1', undefined)).toBe('<BR>')
+    expect(resolveNewlineForm({ default: '\\n', entries: {} }, 'lang|foo.research.page.1', undefined)).toBe('<BR>')
   })
 })
 
