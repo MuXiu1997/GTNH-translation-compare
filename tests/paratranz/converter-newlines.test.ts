@@ -20,8 +20,9 @@ describe('newline conversion helpers', () => {
     expect(sniffNewline('a\\\\nb')).toBe('\\\\n')
     expect(sniffNewline('a\\nb')).toBe('\\n')
     expect(sniffNewline('a%nb')).toBe('%n')
+    expect(sniffNewline('a\nb')).toBe('LF')
 
-    for (const value of ['a<BR>b', 'a<br>b', 'a\\\\nb', 'a\\nb', 'a%nb'])
+    for (const value of ['a<BR>b', 'a<br>b', 'a\\\\nb', 'a\\nb', 'a%nb', 'a\nb'])
       expect(normalizeNewlines(value)).toBe('a\nb')
 
     expect(restoreNewlines('a\nb', '<BR>')).toBe('a<BR>b')
@@ -29,6 +30,7 @@ describe('newline conversion helpers', () => {
     expect(restoreNewlines('a\nb', '\\\\n')).toBe('a\\\\nb')
     expect(restoreNewlines('a\nb', '\\n')).toBe('a\\nb')
     expect(restoreNewlines('a\nb', '%n')).toBe('a%nb')
+    expect(restoreNewlines('a\nb', 'LF')).toBe('a\nb')
   })
 
   it('uses research page BR fallback before file fallback', () => {
@@ -77,16 +79,15 @@ describe('Converter entry-level newline handling', () => {
       'one\ntwo',
       'one\ntwo',
     ])
-    expect(uploaded.fileExtra.newlines).toEqual({
-      default: '\\n',
-      entries: {
-        'lang|a': '\\n',
-        'lang|b': '<BR>',
-        'lang|c': '<br>',
-        'lang|d': '%n',
-        'lang|e': '\\\\n',
-      },
-    })
+    expect((uploaded.fileExtra as any).newlines).toBeUndefined()
+    expect(uploaded.stringItems.map(item => item.context)).toEqual([
+      '@gtnh-newline-form=\\n',
+      '@gtnh-newline-form=<BR>',
+      '@gtnh-newline-form=<br>',
+      '@gtnh-newline-form=%n',
+      '@gtnh-newline-form=\\\\n',
+    ])
+    expect(uploaded.stringItems.every(item => !item.context?.includes('one'))).toBe(true)
 
     const downloaded = await converter.toTranslationFile({
       id: 1,
@@ -104,7 +105,7 @@ describe('Converter entry-level newline handling', () => {
     ].join('\n'))
   })
 
-  it('recovers entry-level forms from legacy file extra', async () => {
+  it('recovers entry-level forms from original content when context is absent', async () => {
     setupEnv()
     const { Converter } = await import('~/paratranz/converter/index.ts')
 
@@ -126,12 +127,11 @@ describe('Converter entry-level newline handling', () => {
     }
     const uploadConverter = new Converter(uploadClient, cache, Languages.zh_CN)
     const uploaded = await uploadConverter.toParatranzFile(file)
-    const legacyExtra = { ...uploaded.fileExtra }
-    delete legacyExtra.newlines
+    const legacyStringItems = uploaded.stringItems.map(({ context: _, ...item }) => item)
 
     const downloadClient: any = {
-      getFile: async () => ({ id: 1, name: uploaded.fileName, modifiedAt: null, extra: legacyExtra }),
-      getStrings: async () => uploaded.stringItems.map(item => ({
+      getFile: async () => ({ id: 1, name: uploaded.fileName, modifiedAt: null, extra: uploaded.fileExtra }),
+      getStrings: async () => legacyStringItems.map(item => ({
         ...item,
         translation: '甲\n乙',
       })),
@@ -142,7 +142,7 @@ describe('Converter entry-level newline handling', () => {
       id: 1,
       name: uploaded.fileName,
       modifiedAt: null,
-      extra: legacyExtra,
+      extra: uploaded.fileExtra,
     })
 
     expect(downloaded.content).toBe([

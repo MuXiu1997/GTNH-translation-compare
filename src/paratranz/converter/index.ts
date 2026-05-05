@@ -7,13 +7,13 @@ import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
 import {
+  appendNewlineFormToContext,
+  collectNewlineFormsFromContexts,
   collectNewlineFormsFromOriginal,
-  collectNewlineFormsFromValues,
-  hasNewlineForms,
   mergeNewlineFileForms,
-  normalizeNewlineFileForms,
   normalizeNewlines,
   resolveNewlineForm,
+  sniffNewline,
 } from './newlines.ts'
 import { NewlineRules } from './rules.ts'
 
@@ -48,7 +48,7 @@ export class Converter {
 
     const newlineRule = NewlineRules.find(targetRelpath)
     const newlineForms = mergeNewlineFileForms(
-      normalizeNewlineFileForms(fileExtra.newlines),
+      collectNewlineFormsFromContexts(stringItems),
       collectNewlineFormsFromOriginal(fileExtra.original, fileExtra.properties),
     )
 
@@ -91,12 +91,15 @@ export class Converter {
     const targetRelpath = file.getTargetLanguageRelpath(this.targetLang)
     const fileName = `${targetRelpath}.json`
 
-    const stringItems: StringItem[] = Object.values(file.properties).map(p => ({
-      key: p.key,
-      original: normalizeNewlines(p.value),
-      context: p.full,
-      translation: '',
-    }))
+    const stringItems: StringItem[] = Object.values(file.properties).map((p) => {
+      const newlineForm = sniffNewline(p.value)
+      return {
+        key: p.key,
+        original: normalizeNewlines(p.value),
+        ...(newlineForm ? { context: appendNewlineFormToContext('', newlineForm) } : {}),
+        translation: '',
+      }
+    })
 
     // Try to merge old translations
     const remoteFileId = await this.client.findFileIdByName(fileName)
@@ -116,13 +119,11 @@ export class Converter {
       }
     }
 
-    const newlineForms = collectNewlineFormsFromValues(file.properties)
     const fileExtra = {
       original: file.content,
       properties: paratranzProperties,
       enUsRelpath: file.getEnUsRelpath(),
       targetRelpath,
-      ...(hasNewlineForms(newlineForms) ? { newlines: newlineForms } : {}),
     }
 
     return {

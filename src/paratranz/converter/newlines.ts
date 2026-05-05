@@ -1,17 +1,20 @@
-export type NewlineForm = '<BR>' | '<br>' | '\\n' | '\\\\n' | '%n'
+export type NewlineForm = 'LF' | '<BR>' | '<br>' | '\\n' | '\\\\n' | '%n'
+
+const NEWLINE_CONTEXT_PREFIX = '@gtnh-newline-form='
 
 export interface NewlineFileForms {
   default?: NewlineForm
   entries: Record<string, NewlineForm>
 }
 
-interface ValueProperty {
-  value: string
-}
-
 interface RangeProperty {
   start: number
   end: number
+}
+
+interface ContextProperty {
+  key: string
+  context?: string | null
 }
 
 export function sniffNewline(value: string): NewlineForm | undefined {
@@ -25,6 +28,8 @@ export function sniffNewline(value: string): NewlineForm | undefined {
     return '\\n'
   if (value.includes('%n'))
     return '%n'
+  if (value.includes('\n'))
+    return 'LF'
   return undefined
 }
 
@@ -38,6 +43,8 @@ export function normalizeNewlines(value: string): string {
 }
 
 export function restoreNewlines(value: string, form: NewlineForm | undefined): string {
+  if (form === 'LF')
+    return value
   if (form === '\\\\n')
     return value.replaceAll('\n', '\\\\n')
   if (!form || form === '\\n')
@@ -45,16 +52,12 @@ export function restoreNewlines(value: string, form: NewlineForm | undefined): s
   return value.replaceAll('\n', form)
 }
 
-export function collectNewlineFormsFromValues(
-  properties: Record<string, ValueProperty>,
-): NewlineFileForms {
-  const entries: Record<string, NewlineForm> = {}
-  for (const [key, prop] of Object.entries(properties)) {
-    const form = sniffNewline(prop.value)
-    if (form)
-      entries[key] = form
-  }
-  return withDefault(entries)
+export function appendNewlineFormToContext(context: string, form: NewlineForm | undefined): string {
+  if (!form)
+    return context
+  const strippedContext = stripNewlineFormFromContext(context)
+  const marker = `${NEWLINE_CONTEXT_PREFIX}${form}`
+  return strippedContext ? `${strippedContext}\n${marker}` : marker
 }
 
 export function collectNewlineFormsFromOriginal(
@@ -71,32 +74,12 @@ export function collectNewlineFormsFromOriginal(
   return withDefault(entries)
 }
 
-export function normalizeNewlineFileForms(value: unknown): NewlineFileForms {
-  if (value == null || typeof value !== 'object')
-    return { entries: {} }
-
-  if ('entries' in value) {
-    const raw = value as { default?: unknown, entries?: unknown }
-    const entries: Record<string, NewlineForm> = {}
-    if (raw.entries && typeof raw.entries === 'object') {
-      for (const [key, form] of Object.entries(raw.entries)) {
-        if (isNewlineForm(form))
-          entries[key] = form
-      }
-    }
-    const defaultForm = isNewlineForm(raw.default)
-      ? raw.default
-      : mostFrequentNewlineForm(entries)
-    return {
-      ...(defaultForm ? { default: defaultForm } : {}),
-      entries,
-    }
-  }
-
+export function collectNewlineFormsFromContexts(items: readonly ContextProperty[]): NewlineFileForms {
   const entries: Record<string, NewlineForm> = {}
-  for (const [key, form] of Object.entries(value)) {
-    if (isNewlineForm(form))
-      entries[key] = form
+  for (const item of items) {
+    const form = parseNewlineFormFromContext(item.context)
+    if (form)
+      entries[item.key] = form
   }
   return withDefault(entries)
 }
@@ -127,10 +110,6 @@ export function resolveNewlineForm(
     ?? fallback
 }
 
-export function hasNewlineForms(forms: NewlineFileForms): boolean {
-  return forms.default != null || Object.keys(forms.entries).length > 0
-}
-
 function withDefault(entries: Record<string, NewlineForm>): NewlineFileForms {
   const defaultForm = mostFrequentNewlineForm(entries)
   return {
@@ -155,9 +134,34 @@ function mostFrequentNewlineForm(entries: Record<string, NewlineForm>): NewlineF
 }
 
 function isNewlineForm(value: unknown): value is NewlineForm {
-  return value === '<BR>'
+  return value === 'LF'
+    || value === '<BR>'
     || value === '<br>'
     || value === '\\n'
     || value === '\\\\n'
     || value === '%n'
+}
+
+function parseNewlineFormFromContext(context: string | null | undefined): NewlineForm | undefined {
+  if (!context)
+    return undefined
+
+  const lines = context.split(/\r?\n/)
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!.trim()
+    if (!line.startsWith(NEWLINE_CONTEXT_PREFIX))
+      continue
+
+    const form = line.slice(NEWLINE_CONTEXT_PREFIX.length).trim()
+    if (isNewlineForm(form))
+      return form
+  }
+  return undefined
+}
+
+function stripNewlineFormFromContext(context: string): string {
+  return context
+    .split(/\r?\n/)
+    .filter(line => !line.trim().startsWith(NEWLINE_CONTEXT_PREFIX))
+    .join('\n')
 }
