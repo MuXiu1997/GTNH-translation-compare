@@ -1,15 +1,17 @@
+import type { NewlineForm } from './newlines.ts'
 import type { Language } from '~/filetypes/language.ts'
 import { dirname } from 'node:path'
 import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
+import { restoreNewlines } from './newlines.ts'
 
 export interface NewlineRule {
   /** Match the file path */
   match: (relpath: string) => boolean
-  /** Conversion when importing to Paratranz (placeholder -> \n) */
-  toParatranz: (text: string) => string
-  /** Conversion when exporting from Paratranz (\n -> placeholder) */
-  fromParatranz: (text: string) => string
+  /** Legacy fallback when no entry-level form can be recovered. */
+  fallbackForm?: NewlineForm
+  /** Optional entry-level restoration hook. */
+  restore?: (text: string, form: NewlineForm | undefined) => string
   /** Optional post-processing for the entire file content after assembly */
   postProcess?: (text: string, targetLang: Language) => string
 }
@@ -19,15 +21,12 @@ export class ScriptNewlineRule implements NewlineRule {
     return relpath.startsWith('scripts/')
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
-  }
+  fallbackForm: NewlineForm = '<BR>'
 
-  fromParatranz = (text: string): string => {
-    // Convert each part separated by \n to unicode, then join back with <BR>
+  restore = (text: string, form: NewlineForm | undefined): string => {
     return text.split('\n')
       .map(part => toUnicode(part))
-      .join('<BR>')
+      .join(form ?? this.fallbackForm)
   }
 
   postProcess = (text: string, targetLang: Language): string => {
@@ -43,13 +42,7 @@ export class QuestNewlineRule implements NewlineRule {
     return relpath.startsWith(dirname(settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH))
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('%n', '\n')
-  }
-
-  fromParatranz = (text: string): string => {
-    return text.replaceAll('\n', '%n')
-  }
+  fallbackForm: NewlineForm = '%n'
 }
 
 export class GTLangNewlineRule implements NewlineRule {
@@ -57,13 +50,7 @@ export class GTLangNewlineRule implements NewlineRule {
     return relpath.endsWith('GregTech.lang')
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
-  }
-
-  fromParatranz = (text: string): string => {
-    return text.replaceAll('\n', '<BR>')
-  }
+  fallbackForm: NewlineForm = '<BR>'
 }
 
 export class NewlineRules {
@@ -75,5 +62,17 @@ export class NewlineRules {
 
   static find(relpath: string): NewlineRule | undefined {
     return this.all.find(rule => rule.match(relpath))
+  }
+
+  static restoreValue(
+    relpath: string,
+    text: string,
+    form: NewlineForm | undefined,
+  ): string {
+    const rule = this.find(relpath)
+    const resolvedForm = form ?? rule?.fallbackForm
+    return rule?.restore
+      ? rule.restore(text, resolvedForm)
+      : restoreNewlines(text, resolvedForm)
   }
 }

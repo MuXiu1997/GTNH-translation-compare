@@ -41,6 +41,7 @@ export const FileExtraSchema = z.object({
   properties: z.record(z.string(), PropertySchema),
   enUsRelpath: z.string().nullish(),
   targetRelpath: z.string().optional(),
+  newlines: z.unknown().optional(),
 }).catchall(z.unknown()).transform((data) => {
   const { targetRelpath: inputTargetRelpath, enUsRelpath: inputEnUsRelpath, ...rest } = data
   let targetRelpath = inputTargetRelpath

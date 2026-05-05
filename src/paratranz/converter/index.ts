@@ -6,6 +6,15 @@ import type { File, ParatranzFile, StringItem, TranslationFile } from '~/paratra
 import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
+import {
+  collectNewlineFormsFromOriginal,
+  collectNewlineFormsFromValues,
+  hasNewlineForms,
+  mergeNewlineFileForms,
+  normalizeNewlineFileForms,
+  normalizeNewlines,
+  resolveNewlineForm,
+} from './newlines.ts'
 import { NewlineRules } from './rules.ts'
 
 export class Converter {
@@ -29,6 +38,7 @@ export class Converter {
   private async toTranslationFileUncached(paratranzFile: File): Promise<TranslationFile> {
     const fullFile = await this.client.getFile(paratranzFile.id)
     const fileExtra = FileExtraSchema.parse(fullFile.extra)
+    const targetRelpath = fileExtra.targetRelpath || paratranzFile.name.replace(/\.json$/, '')
     const originalContent = [...fileExtra.original]
     const stringItems = await this.client.getStrings(paratranzFile.id)
     const stringItemsMap = new Map(stringItems.map(item => [item.key, item]))
@@ -36,7 +46,11 @@ export class Converter {
     const sortedProperties = Object.entries(fileExtra.properties)
       .sort(([, a], [, b]) => a.start - b.start)
 
-    const newlineRule = NewlineRules.find(fileExtra.targetRelpath)
+    const newlineRule = NewlineRules.find(targetRelpath)
+    const newlineForms = mergeNewlineFileForms(
+      normalizeNewlineFileForms(fileExtra.newlines),
+      collectNewlineFormsFromOriginal(fileExtra.original, fileExtra.properties),
+    )
 
     const result = []
     let lastEnd = 0
@@ -50,9 +64,8 @@ export class Converter {
 
       let translation = stringItem.translation
       if (translation) {
-        if (newlineRule) {
-          translation = newlineRule.fromParatranz(translation)
-        }
+        const form = resolveNewlineForm(newlineForms, key, newlineRule?.fallbackForm)
+        translation = NewlineRules.restoreValue(targetRelpath, translation, form)
         result.push(...translation)
       }
       else {
@@ -69,7 +82,7 @@ export class Converter {
 
     return {
       name: paratranzFile.name,
-      relpath: fileExtra.targetRelpath || paratranzFile.name.replace(/\.json$/, ''),
+      relpath: targetRelpath,
       content: resultString,
     }
   }
@@ -80,17 +93,10 @@ export class Converter {
 
     const stringItems: StringItem[] = Object.values(file.properties).map(p => ({
       key: p.key,
-      original: p.value,
+      original: normalizeNewlines(p.value),
       context: p.full,
       translation: '',
     }))
-
-    const newlineRule = NewlineRules.find(targetRelpath)
-    if (newlineRule) {
-      stringItems.forEach((item) => {
-        item.original = newlineRule.toParatranz(item.original)
-      })
-    }
 
     // Try to merge old translations
     const remoteFileId = await this.client.findFileIdByName(fileName)
@@ -110,11 +116,13 @@ export class Converter {
       }
     }
 
+    const newlineForms = collectNewlineFormsFromValues(file.properties)
     const fileExtra = {
       original: file.content,
       properties: paratranzProperties,
       enUsRelpath: file.getEnUsRelpath(),
       targetRelpath,
+      ...(hasNewlineForms(newlineForms) ? { newlines: newlineForms } : {}),
     }
 
     return {
@@ -131,7 +139,7 @@ export class Converter {
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      if (old && old.original === s.original && old.translation) {
+      if (old && normalizeNewlines(old.original) === normalizeNewlines(s.original) && old.translation) {
         if (s.translation !== old.translation) {
           s.translation = old.translation
           s.stage = old.stage
