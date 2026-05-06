@@ -1,29 +1,29 @@
-import type { NewlineForm } from './newlines.ts'
+import type { LineBreakForm } from './line-breaks.ts'
 import type { Language } from '~/filetypes/language.ts'
 import { dirname } from 'node:path'
 import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
-import { restoreNewlines } from './newlines.ts'
+import { restoreLineBreaks } from './line-breaks.ts'
 
-export interface NewlineRule {
+export interface LineBreakRule {
   /** Match the file path */
   match: (relpath: string) => boolean
   /** Legacy fallback when no entry-level form can be recovered. */
-  fallbackForm?: NewlineForm
+  fallbackForm?: LineBreakForm
   /** Optional entry-level restoration hook. */
-  restore?: (text: string, form: NewlineForm | undefined) => string
+  restore?: (text: string, form: LineBreakForm | undefined) => string
   /** Optional post-processing for the entire file content after assembly */
   postProcess?: (text: string, targetLang: Language) => string
 }
 
-export class ScriptNewlineRule implements NewlineRule {
+export class ScriptLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.startsWith('scripts/')
   }
 
-  fallbackForm: NewlineForm = '<BR>'
+  fallbackForm: LineBreakForm = '<BR>'
 
-  restore = (text: string, form: NewlineForm | undefined): string => {
+  restore = (text: string, form: LineBreakForm | undefined): string => {
     return text.split('\n')
       .map(part => toUnicode(part))
       .join(form ?? this.fallbackForm)
@@ -37,42 +37,42 @@ export class ScriptNewlineRule implements NewlineRule {
   }
 }
 
-export class QuestNewlineRule implements NewlineRule {
+export class QuestLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.startsWith(dirname(settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH))
   }
 
-  fallbackForm: NewlineForm = '%n'
+  fallbackForm: LineBreakForm = '%n'
 }
 
-export class GTLangNewlineRule implements NewlineRule {
+export class GTLangLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.endsWith('GregTech.lang')
   }
 
-  fallbackForm: NewlineForm = '<BR>'
+  fallbackForm: LineBreakForm = '<BR>'
 }
 
-export class NewlineRules {
-  private static readonly all: NewlineRule[] = [
-    new ScriptNewlineRule(),
-    new QuestNewlineRule(),
-    new GTLangNewlineRule(),
+export class LineBreakRules {
+  private static readonly all: LineBreakRule[] = [
+    new ScriptLineBreakRule(),
+    new QuestLineBreakRule(),
+    new GTLangLineBreakRule(),
   ]
 
-  static find(relpath: string): NewlineRule | undefined {
+  static find(relpath: string): LineBreakRule | undefined {
     return this.all.find(rule => rule.match(relpath))
   }
 
   static restoreValue(
     relpath: string,
     text: string,
-    form: NewlineForm | undefined,
+    form: LineBreakForm | undefined,
   ): string {
     const rule = this.find(relpath)
     const resolvedForm = form ?? rule?.fallbackForm
     return rule?.restore
       ? rule.restore(text, resolvedForm)
-      : restoreNewlines(text, resolvedForm)
+      : restoreLineBreaks(text, resolvedForm)
   }
 }

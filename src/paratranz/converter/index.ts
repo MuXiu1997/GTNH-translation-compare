@@ -7,15 +7,15 @@ import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
 import {
-  appendNewlineFormToContext,
-  collectNewlineFormsFromContexts,
-  collectNewlineFormsFromOriginal,
-  mergeNewlineFileForms,
-  normalizeNewlines,
-  resolveNewlineForm,
-  sniffNewline,
-} from './newlines.ts'
-import { NewlineRules } from './rules.ts'
+  appendLineBreakFormToContext,
+  collectLineBreakFormsFromContexts,
+  collectLineBreakFormsFromOriginal,
+  mergeLineBreakFileForms,
+  normalizeLineBreaks,
+  resolveLineBreakForm,
+  sniffLineBreak,
+} from './line-breaks.ts'
+import { LineBreakRules } from './rules.ts'
 
 export class Converter {
   constructor(
@@ -46,10 +46,10 @@ export class Converter {
     const sortedProperties = Object.entries(fileExtra.properties)
       .sort(([, a], [, b]) => a.start - b.start)
 
-    const newlineRule = NewlineRules.find(targetRelpath)
-    const newlineForms = mergeNewlineFileForms(
-      collectNewlineFormsFromContexts(stringItems),
-      collectNewlineFormsFromOriginal(fileExtra.original, fileExtra.properties),
+    const lineBreakRule = LineBreakRules.find(targetRelpath)
+    const lineBreakForms = mergeLineBreakFileForms(
+      collectLineBreakFormsFromContexts(stringItems),
+      collectLineBreakFormsFromOriginal(fileExtra.original, fileExtra.properties),
     )
 
     const result = []
@@ -64,8 +64,8 @@ export class Converter {
 
       let translation = stringItem.translation
       if (translation) {
-        const form = resolveNewlineForm(newlineForms, key, newlineRule?.fallbackForm)
-        translation = NewlineRules.restoreValue(targetRelpath, translation, form)
+        const form = resolveLineBreakForm(lineBreakForms, key, lineBreakRule?.fallbackForm)
+        translation = LineBreakRules.restoreValue(targetRelpath, translation, form)
         result.push(...translation)
       }
       else {
@@ -76,8 +76,8 @@ export class Converter {
     result.push(...originalContent.slice(lastEnd))
 
     let resultString = result.join('')
-    if (newlineRule?.postProcess) {
-      resultString = newlineRule.postProcess(resultString, this.targetLang)
+    if (lineBreakRule?.postProcess) {
+      resultString = lineBreakRule.postProcess(resultString, this.targetLang)
     }
 
     return {
@@ -92,11 +92,11 @@ export class Converter {
     const fileName = `${targetRelpath}.json`
 
     const stringItems: StringItem[] = Object.values(file.properties).map((p) => {
-      const newlineForm = sniffNewline(p.value)
+      const lineBreakForm = sniffLineBreak(p.value)
       return {
         key: p.key,
-        original: normalizeNewlines(p.value),
-        ...(newlineForm ? { context: appendNewlineFormToContext('', newlineForm) } : {}),
+        original: normalizeLineBreaks(p.value),
+        ...(lineBreakForm ? { context: appendLineBreakFormToContext('', lineBreakForm) } : {}),
         translation: '',
       }
     })
@@ -138,7 +138,7 @@ export class Converter {
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      if (old && normalizeNewlines(old.original) === normalizeNewlines(s.original) && old.translation) {
+      if (old && normalizeLineBreaks(old.original) === normalizeLineBreaks(s.original) && old.translation) {
         if (s.translation !== old.translation) {
           s.translation = old.translation
           s.stage = old.stage
