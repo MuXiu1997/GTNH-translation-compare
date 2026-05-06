@@ -6,7 +6,16 @@ import type { File, ParatranzFile, StringItem, TranslationFile } from '~/paratra
 import chalk from 'chalk'
 import { log } from '~/log'
 import { FileExtraSchema } from '~/paratranz/types.ts'
-import { NewlineRules } from './rules.ts'
+import {
+  appendLineBreakFormToContext,
+  collectLineBreakFormsFromContexts,
+  collectLineBreakFormsFromOriginal,
+  mergeLineBreakFileForms,
+  normalizeLineBreaks,
+  resolveLineBreakForm,
+  sniffLineBreak,
+} from './line-breaks.ts'
+import { LineBreakRules } from './rules.ts'
 
 export class Converter {
   constructor(
@@ -29,6 +38,7 @@ export class Converter {
   private async toTranslationFileUncached(paratranzFile: File): Promise<TranslationFile> {
     const fullFile = await this.client.getFile(paratranzFile.id)
     const fileExtra = FileExtraSchema.parse(fullFile.extra)
+    const targetRelpath = fileExtra.targetRelpath || paratranzFile.name.replace(/\.json$/, '')
     const originalContent = [...fileExtra.original]
     const stringItems = await this.client.getStrings(paratranzFile.id)
     const stringItemsMap = new Map(stringItems.map(item => [item.key, item]))
@@ -36,7 +46,11 @@ export class Converter {
     const sortedProperties = Object.entries(fileExtra.properties)
       .sort(([, a], [, b]) => a.start - b.start)
 
-    const newlineRule = NewlineRules.find(fileExtra.targetRelpath)
+    const lineBreakRule = LineBreakRules.find(targetRelpath)
+    const lineBreakForms = mergeLineBreakFileForms(
+      collectLineBreakFormsFromContexts(stringItems),
+      collectLineBreakFormsFromOriginal(fileExtra.original, fileExtra.properties),
+    )
 
     const result = []
     let lastEnd = 0
@@ -50,9 +64,8 @@ export class Converter {
 
       let translation = stringItem.translation
       if (translation) {
-        if (newlineRule) {
-          translation = newlineRule.fromParatranz(translation)
-        }
+        const form = resolveLineBreakForm(lineBreakForms, key, lineBreakRule?.fallbackForm)
+        translation = LineBreakRules.restoreValue(targetRelpath, translation, form)
         result.push(...translation)
       }
       else {
@@ -63,13 +76,13 @@ export class Converter {
     result.push(...originalContent.slice(lastEnd))
 
     let resultString = result.join('')
-    if (newlineRule?.postProcess) {
-      resultString = newlineRule.postProcess(resultString, this.targetLang)
+    if (lineBreakRule?.postProcess) {
+      resultString = lineBreakRule.postProcess(resultString, this.targetLang)
     }
 
     return {
       name: paratranzFile.name,
-      relpath: fileExtra.targetRelpath || paratranzFile.name.replace(/\.json$/, ''),
+      relpath: targetRelpath,
       content: resultString,
     }
   }
@@ -78,19 +91,15 @@ export class Converter {
     const targetRelpath = file.getTargetLanguageRelpath(this.targetLang)
     const fileName = `${targetRelpath}.json`
 
-    const stringItems: StringItem[] = Object.values(file.properties).map(p => ({
-      key: p.key,
-      original: p.value,
-      context: p.full,
-      translation: '',
-    }))
-
-    const newlineRule = NewlineRules.find(targetRelpath)
-    if (newlineRule) {
-      stringItems.forEach((item) => {
-        item.original = newlineRule.toParatranz(item.original)
-      })
-    }
+    const stringItems: StringItem[] = Object.values(file.properties).map((p) => {
+      const lineBreakForm = sniffLineBreak(p.value)
+      return {
+        key: p.key,
+        original: normalizeLineBreaks(p.value),
+        ...(lineBreakForm ? { context: appendLineBreakFormToContext('', lineBreakForm) } : {}),
+        translation: '',
+      }
+    })
 
     // Try to merge old translations
     const remoteFileId = await this.client.findFileIdByName(fileName)
@@ -113,8 +122,6 @@ export class Converter {
     const fileExtra = {
       original: file.content,
       properties: paratranzProperties,
-      enUsRelpath: file.getEnUsRelpath(),
-      targetRelpath,
     }
 
     return {
@@ -131,7 +138,7 @@ export class Converter {
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      if (old && old.original === s.original && old.translation) {
+      if (old && normalizeLineBreaks(old.original) === normalizeLineBreaks(s.original) && old.translation) {
         if (s.translation !== old.translation) {
           s.translation = old.translation
           s.stage = old.stage

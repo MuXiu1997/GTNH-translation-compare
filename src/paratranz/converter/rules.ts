@@ -1,33 +1,32 @@
+import type { LineBreakForm } from './line-breaks.ts'
 import type { Language } from '~/filetypes/language.ts'
 import { dirname } from 'node:path'
 import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
+import { restoreLineBreaks } from './line-breaks.ts'
 
-export interface NewlineRule {
+export interface LineBreakRule {
   /** Match the file path */
   match: (relpath: string) => boolean
-  /** Conversion when importing to Paratranz (placeholder -> \n) */
-  toParatranz: (text: string) => string
-  /** Conversion when exporting from Paratranz (\n -> placeholder) */
-  fromParatranz: (text: string) => string
+  /** Legacy fallback when no entry-level form can be recovered. */
+  fallbackForm?: LineBreakForm
+  /** Optional entry-level restoration hook. */
+  restore?: (text: string, form: LineBreakForm | undefined) => string
   /** Optional post-processing for the entire file content after assembly */
   postProcess?: (text: string, targetLang: Language) => string
 }
 
-export class ScriptNewlineRule implements NewlineRule {
+export class ScriptLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.startsWith('scripts/')
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
-  }
+  fallbackForm: LineBreakForm = '<BR>'
 
-  fromParatranz = (text: string): string => {
-    // Convert each part separated by \n to unicode, then join back with <BR>
+  restore = (text: string, form: LineBreakForm | undefined): string => {
     return text.split('\n')
       .map(part => toUnicode(part))
-      .join('<BR>')
+      .join(form ?? this.fallbackForm)
   }
 
   postProcess = (text: string, targetLang: Language): string => {
@@ -38,42 +37,42 @@ export class ScriptNewlineRule implements NewlineRule {
   }
 }
 
-export class QuestNewlineRule implements NewlineRule {
+export class QuestLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.startsWith(dirname(settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH))
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('%n', '\n')
-  }
-
-  fromParatranz = (text: string): string => {
-    return text.replaceAll('\n', '%n')
-  }
+  fallbackForm: LineBreakForm = '%n'
 }
 
-export class GTLangNewlineRule implements NewlineRule {
+export class GTLangLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.endsWith('GregTech.lang')
   }
 
-  toParatranz = (text: string): string => {
-    return text.replaceAll('<BR>', '\n').replaceAll('<br>', '\n')
-  }
-
-  fromParatranz = (text: string): string => {
-    return text.replaceAll('\n', '<BR>')
-  }
+  fallbackForm: LineBreakForm = '<BR>'
 }
 
-export class NewlineRules {
-  private static readonly all: NewlineRule[] = [
-    new ScriptNewlineRule(),
-    new QuestNewlineRule(),
-    new GTLangNewlineRule(),
+export class LineBreakRules {
+  private static readonly all: LineBreakRule[] = [
+    new ScriptLineBreakRule(),
+    new QuestLineBreakRule(),
+    new GTLangLineBreakRule(),
   ]
 
-  static find(relpath: string): NewlineRule | undefined {
+  static find(relpath: string): LineBreakRule | undefined {
     return this.all.find(rule => rule.match(relpath))
+  }
+
+  static restoreValue(
+    relpath: string,
+    text: string,
+    form: LineBreakForm | undefined,
+  ): string {
+    const rule = this.find(relpath)
+    const resolvedForm = form ?? rule?.fallbackForm
+    return rule?.restore
+      ? rule.restore(text, resolvedForm)
+      : restoreLineBreaks(text, resolvedForm)
   }
 }
