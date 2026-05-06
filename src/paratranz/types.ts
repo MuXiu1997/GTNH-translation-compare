@@ -68,8 +68,8 @@ export const FileExtraSchema = z.object({
 
   return {
     ...rest,
-    enUsRelpath: enUsRelpath ?? '',
-    targetRelpath: targetRelpath ?? '',
+    ...(enUsRelpath ? { enUsRelpath } : {}),
+    ...(targetRelpath ? { targetRelpath } : {}),
   }
 })
 

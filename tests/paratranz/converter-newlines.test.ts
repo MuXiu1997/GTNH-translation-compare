@@ -80,6 +80,8 @@ describe('Converter entry-level newline handling', () => {
       'one\ntwo',
     ])
     expect((uploaded.fileExtra as any).newlines).toBeUndefined()
+    expect((uploaded.fileExtra as any).enUsRelpath).toBeUndefined()
+    expect((uploaded.fileExtra as any).targetRelpath).toBeUndefined()
     expect(uploaded.stringItems.map(item => item.context)).toEqual([
       '@gtnh-newline-form=\\n',
       '@gtnh-newline-form=<BR>',

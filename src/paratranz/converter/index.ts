@@ -122,8 +122,6 @@ export class Converter {
     const fileExtra = {
       original: file.content,
       properties: paratranzProperties,
-      enUsRelpath: file.getEnUsRelpath(),
-      targetRelpath,
     }
 
     return {
