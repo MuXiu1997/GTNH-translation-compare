@@ -17,16 +17,18 @@ describe('newline conversion helpers', () => {
   it('sniffs, normalizes, and restores supported newline forms', () => {
     expect(sniffNewline('a<BR>b')).toBe('<BR>')
     expect(sniffNewline('a<br>b')).toBe('<br>')
+    expect(sniffNewline('a[br]b')).toBe('[br]')
     expect(sniffNewline('a\\\\nb')).toBe('\\\\n')
     expect(sniffNewline('a\\nb')).toBe('\\n')
     expect(sniffNewline('a%nb')).toBe('%n')
     expect(sniffNewline('a\nb')).toBe('LF')
 
-    for (const value of ['a<BR>b', 'a<br>b', 'a\\\\nb', 'a\\nb', 'a%nb', 'a\nb'])
+    for (const value of ['a<BR>b', 'a<br>b', 'a[br]b', 'a\\\\nb', 'a\\nb', 'a%nb', 'a\nb'])
       expect(normalizeNewlines(value)).toBe('a\nb')
 
     expect(restoreNewlines('a\nb', '<BR>')).toBe('a<BR>b')
     expect(restoreNewlines('a\nb', '<br>')).toBe('a<br>b')
+    expect(restoreNewlines('a\nb', '[br]')).toBe('a[br]b')
     expect(restoreNewlines('a\nb', '\\\\n')).toBe('a\\\\nb')
     expect(restoreNewlines('a\nb', '\\n')).toBe('a\\nb')
     expect(restoreNewlines('a\nb', '%n')).toBe('a%nb')
@@ -50,8 +52,9 @@ describe('Converter entry-level newline handling', () => {
         'a=one\\ntwo',
         'b=one<BR>two',
         'c=one<br>two',
-        'd=one%ntwo',
-        'e=one\\\\ntwo',
+        'd=one[br]two',
+        'e=one%ntwo',
+        'f=one\\\\ntwo',
       ].join('\n'),
       Languages.en_US,
     )
@@ -78,6 +81,7 @@ describe('Converter entry-level newline handling', () => {
       'one\ntwo',
       'one\ntwo',
       'one\ntwo',
+      'one\ntwo',
     ])
     expect((uploaded.fileExtra as any).newlines).toBeUndefined()
     expect((uploaded.fileExtra as any).enUsRelpath).toBeUndefined()
@@ -86,6 +90,7 @@ describe('Converter entry-level newline handling', () => {
       '@gtnh-newline-form=\\n',
       '@gtnh-newline-form=<BR>',
       '@gtnh-newline-form=<br>',
+      '@gtnh-newline-form=[br]',
       '@gtnh-newline-form=%n',
       '@gtnh-newline-form=\\\\n',
     ])
@@ -102,8 +107,9 @@ describe('Converter entry-level newline handling', () => {
       'a=甲\\n乙',
       'b=甲<BR>乙',
       'c=甲<br>乙',
-      'd=甲%n乙',
-      'e=甲\\\\n乙',
+      'd=甲[br]乙',
+      'e=甲%n乙',
+      'f=甲\\\\n乙',
     ].join('\n'))
   })
 

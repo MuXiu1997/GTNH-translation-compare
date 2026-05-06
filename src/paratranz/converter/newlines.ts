@@ -1,4 +1,4 @@
-export type NewlineForm = 'LF' | '<BR>' | '<br>' | '\\n' | '\\\\n' | '%n'
+export type NewlineForm = 'LF' | '<BR>' | '<br>' | '[br]' | '\\n' | '\\\\n' | '%n'
 
 const NEWLINE_CONTEXT_PREFIX = '@gtnh-newline-form='
 
@@ -22,6 +22,8 @@ export function sniffNewline(value: string): NewlineForm | undefined {
     return '<BR>'
   if (value.includes('<br>'))
     return '<br>'
+  if (value.includes('[br]'))
+    return '[br]'
   if (value.includes('\\\\n'))
     return '\\\\n'
   if (value.includes('\\n'))
@@ -37,6 +39,7 @@ export function normalizeNewlines(value: string): string {
   return value
     .replaceAll('<BR>', '\n')
     .replaceAll('<br>', '\n')
+    .replaceAll('[br]', '\n')
     .replaceAll('\\\\n', '\n')
     .replaceAll('\\n', '\n')
     .replaceAll('%n', '\n')
@@ -137,6 +140,7 @@ function isNewlineForm(value: unknown): value is NewlineForm {
   return value === 'LF'
     || value === '<BR>'
     || value === '<br>'
+    || value === '[br]'
     || value === '\\n'
     || value === '\\\\n'
     || value === '%n'
