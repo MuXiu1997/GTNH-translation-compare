@@ -1,7 +1,5 @@
 import type { LineBreakForm } from './line-breaks.ts'
 import type { Language } from '~/filetypes/language.ts'
-import { dirname } from 'node:path'
-import * as settings from '~/settings.ts'
 import { toUnicode } from '~/utils/unicode.ts'
 import { restoreLineBreaks } from './line-breaks.ts'
 
@@ -37,14 +35,6 @@ export class ScriptLineBreakRule implements LineBreakRule {
   }
 }
 
-export class QuestLineBreakRule implements LineBreakRule {
-  match = (relpath: string): boolean => {
-    return relpath.startsWith(dirname(settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH))
-  }
-
-  fallbackForm: LineBreakForm = '%n'
-}
-
 export class GTLangLineBreakRule implements LineBreakRule {
   match = (relpath: string): boolean => {
     return relpath.endsWith('GregTech.lang')
@@ -56,7 +46,6 @@ export class GTLangLineBreakRule implements LineBreakRule {
 export class LineBreakRules {
   private static readonly all: LineBreakRule[] = [
     new ScriptLineBreakRule(),
-    new QuestLineBreakRule(),
     new GTLangLineBreakRule(),
   ]
 

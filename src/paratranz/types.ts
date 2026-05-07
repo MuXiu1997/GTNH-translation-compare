@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { TARGET_LANGUAGES } from '~/filetypes/language.ts'
+import { log } from '~/log'
 
 export const FileSchema = z.object({
   id: z.number(),
@@ -42,6 +43,7 @@ export const FileExtraSchema = z.object({
   enUsRelpath: z.string().nullish(),
   targetRelpath: z.string().optional(),
 }).catchall(z.unknown()).transform((data) => {
+  const l = log.withTag('FileExtraSchema.transform')
   const { targetRelpath: inputTargetRelpath, enUsRelpath: inputEnUsRelpath, ...rest } = data
   let targetRelpath = inputTargetRelpath
   let enUsRelpath = inputEnUsRelpath
@@ -62,7 +64,7 @@ export const FileExtraSchema = z.object({
         targetRelpath = (rest as any)[legacyKey]
       }
       delete (rest as any)[legacyKey]
-      console.warn(`FileExtra.${legacyKey} is deprecated, use FileExtra.targetRelpath instead`)
+      l.warn(`FileExtra.${legacyKey} is deprecated, use FileExtra.targetRelpath instead`)
     }
   }
 
