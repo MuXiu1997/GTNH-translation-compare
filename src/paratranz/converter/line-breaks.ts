@@ -9,6 +9,13 @@ const LINE_BREAK_PLACEHOLDER_FORMS = LINE_BREAK_FORMS.filter(
   (form): form is Exclude<LineBreakForm, 'LF'> => form !== 'LF',
 )
 const LINE_BREAK_FORM_SET = new Set<LineBreakForm>(LINE_BREAK_FORMS)
+// ParaTranz lowercases HTML-like tags inside a string item's `context`
+// (e.g. `<BR>` is rewritten to `<br>` on the server side), which would
+// otherwise collapse the `<BR>` and `<br>` forms after a round trip.
+// To preserve the original case we encode `<BR>` with a `-UP` suffix
+// before writing the marker; the suffix is plain text and is left
+// intact by ParaTranz, so `decodeLineBreakContextValue` can recover
+// the original form on read-back.
 const LINE_BREAK_CONTEXT_VALUES: Record<LineBreakForm, string> = {
   '<BR>': '<BR>-UP',
   '<br>': '<br>',
@@ -196,6 +203,9 @@ function allowedLineBreakForm(
 }
 
 function decodeLineBreakContextValue(value: string): LineBreakForm | undefined {
+  // ParaTranz only lowercases the `<BR>` portion of the marker, the
+  // `-UP` suffix is plain text and is kept as-is. Accept both the
+  // original `<BR>-UP` we wrote and the round-tripped `<br>-UP`.
   if (value === '<BR>-UP' || value === '<br>-UP')
     return '<BR>'
 
