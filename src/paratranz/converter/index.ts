@@ -9,7 +9,7 @@ import { FileExtraSchema } from '~/paratranz/types.ts'
 import {
   appendLineBreakFormToContext,
   collectLineBreakFormsFromContexts,
-  collectLineBreakFormsFromOriginal,
+  lineBreakOptionsForKey,
   mergeLineBreakFileForms,
   normalizeLineBreaks,
   resolveLineBreakForm,
@@ -49,7 +49,7 @@ export class Converter {
     const lineBreakRule = LineBreakRules.find(targetRelpath)
     const lineBreakForms = mergeLineBreakFileForms(
       collectLineBreakFormsFromContexts(stringItems),
-      collectLineBreakFormsFromOriginal(fileExtra.original, fileExtra.properties),
+      { entries: {} },
     )
 
     const result = []
@@ -90,12 +90,15 @@ export class Converter {
   async toParatranzFile(file: Filetype): Promise<ParatranzFile> {
     const targetRelpath = file.getTargetLanguageRelpath(this.targetLang)
     const fileName = `${targetRelpath}.json`
+    const lineBreakRule = LineBreakRules.find(targetRelpath)
 
     const stringItems: StringItem[] = Object.values(file.properties).map((p) => {
-      const lineBreakForm = sniffLineBreak(p.value)
+      const lineBreakOptions = lineBreakOptionsForKey(p.key)
+      const lineBreakForm = sniffLineBreak(p.value, lineBreakOptions)
+        ?? resolveLineBreakForm({ entries: {} }, p.key, lineBreakRule?.fallbackForm)
       return {
         key: p.key,
-        original: normalizeLineBreaks(p.value),
+        original: normalizeLineBreaks(p.value, lineBreakOptions),
         ...(lineBreakForm ? { context: appendLineBreakFormToContext('', lineBreakForm) } : {}),
         translation: '',
       }
@@ -138,7 +141,8 @@ export class Converter {
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      if (old && normalizeLineBreaks(old.original) === normalizeLineBreaks(s.original) && old.translation) {
+      const lineBreakOptions = lineBreakOptionsForKey(s.key)
+      if (old && normalizeLineBreaks(old.original, lineBreakOptions) === normalizeLineBreaks(s.original, lineBreakOptions) && old.translation) {
         if (s.translation !== old.translation) {
           s.translation = old.translation
           s.stage = old.stage
