@@ -7,13 +7,13 @@ export const TARGET_LANG = parseLanguage(env.TARGET_LANG ?? Languages.zh_CN)
 export const GTNH_REPO = env.GTNH_REPO ?? 'GTNewHorizons/GT-New-Horizons-Modpack'
 
 export const DEFAULT_QUESTS_LANG_TEMPLATE_REL_PATH = env.DEFAULT_QUESTS_LANG_TEMPLATE_REL_PATH
-  ?? 'config/txloader/load/betterquesting/lang/template.lang'
+  ?? 'config/txloader/forceload/betterquesting/lang/template.lang'
 
 export const DEFAULT_QUESTS_LANG_EN_US_REL_PATH = env.DEFAULT_QUESTS_LANG_EN_US_REL_PATH
-  ?? 'config/txloader/load/betterquesting/lang/en_US.lang'
+  ?? 'config/txloader/forceload/betterquesting/lang/en_US.lang'
 
 export const DEFAULT_QUESTS_LANG_TARGET_REL_PATH = env.DEFAULT_QUESTS_LANG_TARGET_REL_PATH
-  ?? `config/txloader/load/betterquesting/lang/${TARGET_LANG}.lang`
+  ?? `config/txloader/forceload/betterquesting/lang/${TARGET_LANG}.lang`
 
 export const GT_LANG_EN_US_REL_PATH = 'GregTech_US.lang'
 export const GT_LANG_TARGET_REL_PATH = 'GregTech.lang'
