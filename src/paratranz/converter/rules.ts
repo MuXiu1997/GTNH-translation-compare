@@ -1,5 +1,6 @@
 import type { LineBreakForm } from './line-breaks.ts'
 import type { Language } from '~/filetypes/language.ts'
+import { isMarkdownTooltipPath } from '~/filetypes/filetype-markdown-tooltip.ts'
 import { toUnicode } from '~/utils/unicode.ts'
 import { restoreLineBreaks } from './line-breaks.ts'
 
@@ -43,10 +44,25 @@ export class GTLangLineBreakRule implements LineBreakRule {
   fallbackForm: LineBreakForm = '<BR>'
 }
 
+export class MarkdownTooltipLineBreakRule implements LineBreakRule {
+  match = (relpath: string): boolean => {
+    return isMarkdownTooltipPath(relpath)
+  }
+
+  fallbackForm: LineBreakForm = 'LF'
+
+  restore = (text: string): string => {
+    return text
+      .replaceAll('\\r\\n', '\n')
+      .replaceAll('\\n', '\n')
+  }
+}
+
 export class LineBreakRules {
   private static readonly all: LineBreakRule[] = [
     new ScriptLineBreakRule(),
     new GTLangLineBreakRule(),
+    new MarkdownTooltipLineBreakRule(),
   ]
 
   static find(relpath: string): LineBreakRule | undefined {

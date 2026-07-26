@@ -1,15 +1,16 @@
+import type { Filetype } from '~/filetypes/filetype.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { Glob } from 'bun'
 import { uniqBy } from 'lodash-es'
-import { FiletypeLang, FiletypeScript } from '~/filetypes/index.ts'
+import { FiletypeLang, FiletypeMarkdownTooltip, FiletypeScript } from '~/filetypes/index.ts'
 import { Mod } from '~/modpack/mod.ts'
 import { ensureLf } from '~/utils/file.ts'
 
 export class ModPack {
   readonly #packPath: string
   readonly #extraLangs?: string[]
-  #langFiles?: FiletypeLang[]
+  #langFiles?: Filetype[]
   #scriptFiles?: FiletypeScript[]
 
   constructor(packPath: string, extraLangs?: string[]) {
@@ -17,7 +18,7 @@ export class ModPack {
     this.#extraLangs = extraLangs
   }
 
-  get langFiles(): FiletypeLang[] {
+  get langFiles(): Filetype[] {
     if (this.#langFiles === undefined) {
       this.#langFiles = uniqBy(
         [...this.parseLangFiles(), ...this.parseExtraLangFiles()],
@@ -27,8 +28,8 @@ export class ModPack {
     return this.#langFiles
   }
 
-  private parseLangFiles(): FiletypeLang[] {
-    const langFiles: FiletypeLang[] = []
+  private parseLangFiles(): Filetype[] {
+    const langFiles: Filetype[] = []
     const jarGlob = new Glob('mods/**/*.jar')
 
     for (const jarRelativePath of jarGlob.scanSync({ cwd: this.#packPath })) {
@@ -42,6 +43,19 @@ export class ModPack {
 
         langFiles.push(
           new FiletypeLang(
+            `resources/${mod.modName}[${subModId}]/${relPathInsideResources}`,
+            content,
+          ),
+        )
+      }
+
+      for (const [filename, content] of Object.entries(mod.markdownTooltipFiles)) {
+        const parts = filename.split('/')
+        const subModId = parts[1]!
+        const relPathInsideResources = parts.slice(2).join('/')
+
+        langFiles.push(
+          new FiletypeMarkdownTooltip(
             `resources/${mod.modName}[${subModId}]/${relPathInsideResources}`,
             content,
           ),
