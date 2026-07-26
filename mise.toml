@@ -1,0 +1,29 @@
+[tools]
+bun = "1.3.5"
+prek = "0.3.4"
+
+[hooks]
+postinstall = "prek install"
+
+[env]
+_.path = ["{{ config_root }}/node_modules/.bin"]
+
+[tasks.install]
+description = "Install dependencies from the lockfile"
+run = "bun install --frozen-lockfile"
+
+[tasks.lint]
+description = "Lint the project"
+run = "bun run lint"
+
+[tasks.typecheck]
+description = "Type-check the project"
+run = "bun x tsc --noEmit"
+
+[tasks.test]
+description = "Run the test suite"
+run = "bun test"
+
+[tasks.check]
+description = "Run all project checks"
+depends = ["lint", "typecheck", "test"]

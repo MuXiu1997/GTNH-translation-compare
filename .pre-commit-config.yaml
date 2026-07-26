@@ -1,0 +1,24 @@
+repos:
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: fix-byte-order-marker
+
+      - id: check-json
+      - id: check-json5
+      - id: check-yaml
+      - id: check-toml
+      - id: check-xml
+
+      - id: check-case-conflict
+
+  - repo: https://github.com/MuXiu1997/pre-commit-hooks
+    rev: v0.2.0
+    hooks:
+      - id: eslint-fix
+        exclude: \.(ya?ml|toml)$
+      - id: yamlfmt
+      - id: tombi-lint
+      - id: tombi-format

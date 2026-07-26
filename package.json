@@ -2,10 +2,17 @@
   "name": "gtnh-translation-compare",
   "type": "module",
   "private": true,
+  "packageManager": "bun@1.3.5",
   "module": "src/index.ts",
+  "engines": {
+    "bun": ">=1.3.5"
+  },
   "scripts": {
-    "lint": "eslint --fix . && tsc --noEmit",
-    "postinstall": "simple-git-hooks"
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run lint && bun run typecheck && bun run test"
   },
   "dependencies": {
     "@actions/core": "2.0.1",
@@ -29,14 +36,6 @@
     "@types/lodash-es": "4.17.12",
     "@types/p-limit": "2.2.0",
     "eslint": "9.39.2",
-    "lint-staged": "16.2.7",
-    "simple-git-hooks": "2.13.1",
     "typescript": "5.9.3"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "bun lint-staged"
-  },
-  "lint-staged": {
-    "*": "eslint --fix"
   }
 }
