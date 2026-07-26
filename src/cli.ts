@@ -9,17 +9,40 @@ import chalk from 'chalk'
 import { Builtins, Cli, Command, Option } from 'clipanion'
 import { FiletypeGTLang } from '~/filetypes/filetype-gt-lang.ts'
 import { FiletypeLang } from '~/filetypes/filetype-lang.ts'
+import {
+  isMarkdownTooltipParatranzFile,
+  isMarkdownTooltipPath,
+} from '~/filetypes/filetype-markdown-tooltip.ts'
 import { Languages } from '~/filetypes/language.ts'
 import { log } from '~/log'
 import { ModPack } from '~/modpack/modpack.ts'
 import { ClientWrapper } from '~/paratranz/api/index.ts'
 import { ConverterCache } from '~/paratranz/converter/cache.ts'
 import { Converter } from '~/paratranz/converter/index.ts'
+import {
+  convertAndDedupeTranslationFiles,
+  markdownTooltipToLocalRelpath,
+} from '~/paratranz/translation-paths.ts'
 import * as settings from '~/settings.ts'
 import { ensureLf } from '~/utils/file.ts'
 
 export type ParatranzFilenameFilter = (name: string) => boolean
 export type AfterToTranslationFileCallback = (translationFile: TranslationFile) => void
+
+export function isLangAndZsParatranzFile(name: string): boolean {
+  return (
+    name.endsWith('.lang.json')
+    && name !== `${settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH}.json`
+    && name !== `${settings.GT_LANG_TARGET_REL_PATH}.json`
+  ) || name.endsWith('.zs.json')
+  || isMarkdownTooltipParatranzFile(name)
+}
+
+export function langAndZsLocalRelpath(relpath: string): string {
+  return isMarkdownTooltipPath(relpath)
+    ? markdownTooltipToLocalRelpath(relpath)
+    : relpath
+}
 
 abstract class BaseCommand extends Command {
   protected readonly client = new ClientWrapper(
@@ -60,6 +83,7 @@ abstract class BaseCommand extends Command {
     raiseWhenEmpty?: Error,
     message?: string,
     issue?: string,
+    localRelpathConverter: (relpath: string) => string = relpath => relpath,
   ): Promise<void> {
     const l = log.withTag(`${this.constructor.name}.paratranzToTranslation`)
     const translationFiles: TranslationFile[] = []
@@ -80,8 +104,16 @@ abstract class BaseCommand extends Command {
       return
     }
 
+    const localTranslationFiles = convertAndDedupeTranslationFiles(
+      translationFiles,
+      localRelpathConverter,
+    )
+    if (localTranslationFiles.length !== translationFiles.length) {
+      l.warn(`Removed ${chalk.magentaBright.bold(translationFiles.length - localTranslationFiles.length)} translation file path collision(s) before writing`)
+    }
+
     const translationFilepaths: string[] = []
-    for (const translationFile of translationFiles) {
+    for (const translationFile of localTranslationFiles) {
       if (!translationFile.relpath) {
         l.warn(`Translation file ${chalk.blueBright.bold(translationFile.name)} has empty relpath, skipping...`)
         continue
@@ -197,21 +229,14 @@ class FromParatranzLangAndZsCommand extends BaseCommand {
   message = Option.String('-m,--message', { description: 'Commit message' })
 
   async run() {
-    const filter: ParatranzFilenameFilter = (name) => {
-      return (
-        name.endsWith('.lang.json')
-        && name !== `${settings.DEFAULT_QUESTS_LANG_TARGET_REL_PATH}.json`
-        && name !== `${settings.GT_LANG_TARGET_REL_PATH}.json`
-      ) || name.endsWith('.zs.json')
-    }
-
     await this.paratranzToTranslation(
       this.repoPath,
-      filter,
+      isLangAndZsParatranzFile,
       undefined,
-      new Error('No lang or zs file found'),
+      new Error('No lang, markdown tooltip, or zs file found'),
       this.message,
       this.issue,
+      langAndZsLocalRelpath,
     )
   }
 }

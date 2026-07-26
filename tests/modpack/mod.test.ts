@@ -20,6 +20,10 @@ describe('Mod', () => {
       { name: 'Test Mod' },
     ]), 'utf8'))
     zip.addFile('assets/testmod/lang/en_US.lang', Buffer.from('test.key=Test Value', 'utf8'))
+    zip.addFile('assets/testmod/lang/en_US/tooltip/machine.md', Buffer.from('First line\r\nSecond line', 'utf8'))
+    zip.addFile('assets/testmod/lang/en_US/tooltip/nested/detail.md', Buffer.from('Nested tooltip', 'utf8'))
+    zip.addFile('assets/testmod/lang/zh_CN/tooltip/machine.md', Buffer.from('不应读取', 'utf8'))
+    zip.addFile('assets/testmod/lang/en_US/not-tooltip/ignored.md', Buffer.from('Ignored', 'utf8'))
     zip.writeZip(testJarPath)
   })
 
@@ -36,6 +40,14 @@ describe('Mod', () => {
     const mod = new Mod(testJarPath)
     expect(mod.langFiles).toEqual({
       'assets/testmod/lang/en_US.lang': 'test.key=Test Value',
+    })
+  })
+
+  it('should recursively find English markdown tooltip files', () => {
+    const mod = new Mod(testJarPath)
+    expect(mod.markdownTooltipFiles).toEqual({
+      'assets/testmod/lang/en_US/tooltip/machine.md': 'First line\nSecond line',
+      'assets/testmod/lang/en_US/tooltip/nested/detail.md': 'Nested tooltip',
     })
   })
 

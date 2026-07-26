@@ -1,5 +1,6 @@
 export * from '~/filetypes/filetype-gt-lang.ts'
 export * from '~/filetypes/filetype-lang.ts'
+export * from '~/filetypes/filetype-markdown-tooltip.ts'
 export * from '~/filetypes/filetype-script.ts'
 export * from '~/filetypes/filetype.ts'
 export * from '~/filetypes/language.ts'

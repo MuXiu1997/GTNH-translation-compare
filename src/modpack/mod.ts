@@ -6,6 +6,7 @@ export class Mod {
   readonly #jar: AdmZip
   #modName?: string
   #langFiles?: Record<string, string>
+  #markdownTooltipFiles?: Record<string, string>
 
   constructor(jarPathOrBuffer: string | Buffer) {
     this.#jar = new AdmZip(jarPathOrBuffer)
@@ -124,5 +125,39 @@ export class Mod {
       }
     }
     return langFiles
+  }
+
+  get markdownTooltipFiles(): Record<string, string> {
+    if (this.#markdownTooltipFiles === undefined) {
+      this.#markdownTooltipFiles = this.parseMarkdownTooltipFiles()
+    }
+    return this.#markdownTooltipFiles
+  }
+
+  private parseMarkdownTooltipFiles(): Record<string, string> {
+    const markdownTooltipFiles: Record<string, string> = {}
+    const decoder = new TextDecoder()
+
+    for (const entry of this.#jar.getEntries()) {
+      if (entry.isDirectory)
+        continue
+
+      const name = entry.entryName
+      const parts = name.split('/')
+      const isEnglishMarkdownTooltip = (
+        parts.length >= 6
+        && parts[0] === 'assets'
+        && parts[2] === 'lang'
+        && parts[3] === 'en_US'
+        && parts[4] === 'tooltip'
+        && name.endsWith('.md')
+      )
+
+      if (isEnglishMarkdownTooltip) {
+        markdownTooltipFiles[name] = ensureLf(decoder.decode(entry.getData()))
+      }
+    }
+
+    return markdownTooltipFiles
   }
 }

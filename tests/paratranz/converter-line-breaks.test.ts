@@ -1,6 +1,6 @@
 import type { ParatranzFile } from '~/paratranz/types.ts'
 import { describe, expect, it } from 'bun:test'
-import { FiletypeLang, Languages } from '~/filetypes/index.ts'
+import { FiletypeLang, FiletypeMarkdownTooltip, Languages } from '~/filetypes/index.ts'
 import {
   collectLineBreakFormsFromContexts,
   LINE_BREAK_FORMS,
@@ -151,6 +151,61 @@ describe('Converter entry-level line break handling', () => {
       'd=甲[br]乙',
       'e=甲\\\\n乙',
     ].join('\n'))
+  })
+
+  it('round-trips a whole markdown tooltip and restores literal slash-n as LF', async () => {
+    setupEnv()
+    const { Converter } = await import('~/paratranz/converter/index.ts')
+
+    const sourceRelpath = 'resources/GregTech[gregtech]/lang/en_US/tooltip/bec-ionode.md'
+    const targetRelpath = 'resources/GregTech[gregtech]/lang/zh_CN/tooltip/bec-ionode.md'
+    const sourceContent = [
+      'First {gold:{item:gregtech:gt.blockmachines:15756}} line.',
+      'Second line.',
+    ].join('\n')
+    const file = new FiletypeMarkdownTooltip(sourceRelpath, sourceContent)
+
+    let uploaded: ParatranzFile
+    const client: any = {
+      findFileIdByName: async () => undefined,
+      getFile: async () => ({
+        id: 1,
+        name: uploaded.fileName,
+        modifiedAt: null,
+        extra: uploaded.fileExtra,
+      }),
+      getStrings: async () => uploaded.stringItems.map(item => ({
+        ...item,
+        translation: '第一行。\\n第二行。',
+      })),
+    }
+    const cache: any = {
+      get: () => undefined,
+      set: () => {},
+    }
+    const converter = new Converter(client, cache, Languages.zh_CN)
+
+    uploaded = await converter.toParatranzFile(file)
+
+    expect(uploaded.fileName).toBe(`${targetRelpath}.json`)
+    expect(uploaded.stringItems).toEqual([
+      {
+        key: `md-tooltip|${sourceRelpath}`,
+        original: sourceContent,
+        context: '@gtnh-line-break-form=LF',
+        translation: '',
+      },
+    ])
+
+    const downloaded = await converter.toTranslationFile({
+      id: 1,
+      name: uploaded.fileName,
+      modifiedAt: null,
+      extra: uploaded.fileExtra,
+    })
+
+    expect(downloaded.relpath).toBe(targetRelpath)
+    expect(downloaded.content).toBe('第一行。\n第二行。')
   })
 
   it('uses percent-n only for betterquesting.quest keys', async () => {
