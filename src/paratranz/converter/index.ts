@@ -91,24 +91,30 @@ export class Converter {
     const targetRelpath = file.getTargetLanguageRelpath(this.targetLang)
     const fileName = `${targetRelpath}.json`
     const lineBreakRule = LineBreakRules.find(targetRelpath)
+    const normalizeOriginal = (value: string, key: string): string => {
+      return lineBreakRule?.normalize?.(value)
+        ?? normalizeLineBreaks(value, lineBreakOptionsForKey(key))
+    }
 
     const stringItems: StringItem[] = Object.values(file.properties).map((p) => {
       const lineBreakOptions = lineBreakOptionsForKey(p.key)
-      const lineBreakForm = sniffLineBreak(p.value, lineBreakOptions)
-        ?? resolveLineBreakForm({ entries: {} }, p.key, lineBreakRule?.fallbackForm)
+      const lineBreakForm = lineBreakRule?.normalize
+        ? lineBreakRule.fallbackForm
+        : sniffLineBreak(p.value, lineBreakOptions)
+          ?? resolveLineBreakForm({ entries: {} }, p.key, lineBreakRule?.fallbackForm)
       return {
         key: p.key,
-        original: normalizeLineBreaks(p.value, lineBreakOptions),
+        original: normalizeOriginal(p.value, p.key),
         ...(lineBreakForm ? { context: appendLineBreakFormToContext('', lineBreakForm) } : {}),
         translation: '',
       }
     })
 
     // Try to merge old translations
-    const remoteFileId = await this.client.findFileIdByName(fileName)
+    const remoteFileId = stringItems.length > 0 ? await this.client.findFileIdByName(fileName) : undefined
     if (remoteFileId != null) {
       const oldStrings = await this.client.getStrings(remoteFileId)
-      const mergedCount = this.#mergeStrings(stringItems, oldStrings)
+      const mergedCount = this.#mergeStrings(stringItems, oldStrings, normalizeOriginal)
       const l = log.withTag('Converter.toParatranzFile')
       l.info(`Merged ${chalk.magentaBright.bold(mergedCount)} / ${chalk.gray(stringItems.length)} translations for ${chalk.blueBright.bold(fileName)}`)
     }
@@ -134,15 +140,18 @@ export class Converter {
     }
   }
 
-  #mergeStrings(newItems: StringItem[], oldItems: readonly StringItem[]): number {
+  #mergeStrings(
+    newItems: StringItem[],
+    oldItems: readonly StringItem[],
+    normalizeOriginal: (value: string, key: string) => string,
+  ): number {
     const oldStringsMap = new Map(oldItems.map(s => [s.key, s]))
     let mergedCount = 0
 
     // Merge old translations if they match original text
     for (const s of newItems) {
       const old = oldStringsMap.get(s.key)
-      const lineBreakOptions = lineBreakOptionsForKey(s.key)
-      if (old && normalizeLineBreaks(old.original, lineBreakOptions) === normalizeLineBreaks(s.original, lineBreakOptions) && old.translation) {
+      if (old && normalizeOriginal(old.original, s.key) === normalizeOriginal(s.original, s.key) && old.translation) {
         if (s.translation !== old.translation) {
           s.translation = old.translation
           s.stage = old.stage

@@ -87,6 +87,10 @@ export class ClientWrapper {
   }
 
   async uploadFile(paratranzFile: ParatranzFile): Promise<void> {
+    if (paratranzFile.stringItems.length === 0) {
+      log.withTag('ClientWrapper.uploadFile').warn(`Skipping source file with no strings: ${paratranzFile.fileName}`)
+      return
+    }
     let fileId = await this.findFileIdByName(paratranzFile.fileName)
     let action: 'create' | 'update'
 

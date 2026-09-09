@@ -34,4 +34,17 @@ describe('lang and zs command markdown tooltip routing', () => {
     )
     expect(langAndZsLocalRelpath('scripts/example.zs')).toBe('scripts/example.zs')
   })
+
+  it('routes GuideNH pages through the existing lang-zs commands', async () => {
+    setupEnv()
+    const { isLangAndZsParatranzFile, langAndZsLocalRelpath } = await import('~/cli.ts')
+    const relpath = 'resources/GTNH Guide Pack[gregtech]/guidenh/_zh_cn/items_blocks/machines.md'
+    expect(isLangAndZsParatranzFile(`${relpath}.json`)).toBe(true)
+    expect(isLangAndZsParatranzFile(relpath)).toBe(false)
+    expect(langAndZsLocalRelpath(relpath)).toBe('config/txloader/load/gregtech/guidenh/_zh_cn/items_blocks/machines.md')
+    // Ponder labels still use the existing resources -> forceload release path.
+    const labels = 'resources/GTNH Guide Pack[gregtech]/lang/zh_CN.lang'
+    expect(isLangAndZsParatranzFile(`${labels}.json`)).toBe(true)
+    expect(langAndZsLocalRelpath(labels)).toBe(labels)
+  })
 })

@@ -1,9 +1,10 @@
 import type { Filetype } from '~/filetypes/filetype.ts'
 import fs from 'node:fs'
 import path from 'node:path'
+import AdmZip from 'adm-zip'
 import { Glob } from 'bun'
 import { uniqBy } from 'lodash-es'
-import { FiletypeLang, FiletypeMarkdownTooltip, FiletypeScript } from '~/filetypes/index.ts'
+import { FiletypeGuideNhPage, FiletypeLang, FiletypeMarkdownTooltip, FiletypeScript, isGuideNhPagePath } from '~/filetypes/index.ts'
 import { Mod } from '~/modpack/mod.ts'
 import { ensureLf } from '~/utils/file.ts'
 
@@ -21,7 +22,7 @@ export class ModPack {
   get langFiles(): Filetype[] {
     if (this.#langFiles === undefined) {
       this.#langFiles = uniqBy(
-        [...this.parseLangFiles(), ...this.parseExtraLangFiles()],
+        [...this.parseLangFiles(), ...this.parseGuidePackFiles(), ...this.parseExtraLangFiles()],
         file => file.relpath,
       )
     }
@@ -81,6 +82,38 @@ export class ModPack {
       }
     }
     return langFiles
+  }
+
+  private parseGuidePackFiles(): Filetype[] {
+    const guidePackPath = path.join(this.#packPath, 'config/guidenh/DefaultGuide.zip')
+    // Older modpacks do not bundle a guide pack.
+    if (!fs.existsSync(guidePackPath))
+      return []
+
+    const files: Filetype[] = []
+    const decoder = new TextDecoder()
+    const guidePack = new AdmZip(guidePackPath)
+    for (const entry of guidePack.getEntries()) {
+      const parts = entry.entryName.split('/')
+      if (entry.isDirectory || parts[0] !== 'assets' || parts.some(part => part === '' || part === '.' || part === '..'))
+        continue
+
+      const prefix = `resources/GTNH Guide Pack[${parts[1]}]`
+      // Only English is a source. The pack also ships completed translations.
+      if (parts.length === 4 && parts[2] === 'lang' && parts[3] === 'en_us.lang') {
+        files.push(new FiletypeLang(
+          `${prefix}/lang/en_US.lang`,
+          ensureLf(decoder.decode(entry.getData())),
+        ))
+      }
+      else if (parts[2] === 'guidenh' && parts[3] === '_en_us' && isGuideNhPagePath(entry.entryName)) {
+        files.push(new FiletypeGuideNhPage(
+          `${prefix}/${parts.slice(2).join('/')}`,
+          ensureLf(decoder.decode(entry.getData())),
+        ))
+      }
+    }
+    return files
   }
 
   get scriptFiles(): FiletypeScript[] {

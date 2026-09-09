@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   convertAndDedupeTranslationFiles,
+  guideNhPageToLocalRelpath,
   markdownTooltipToLocalRelpath,
 } from '~/paratranz/translation-paths.ts'
 
@@ -58,6 +59,37 @@ describe('markdownTooltipToLocalRelpath', () => {
     expect(() => markdownTooltipToLocalRelpath(
       'config/txloader/load/gregtech/lang/zh_CN/readme.md',
     )).toThrow('markdown tooltip')
+  })
+})
+
+describe('guideNhPageToLocalRelpath', () => {
+  const target = 'config/txloader/load/gregtech/guidenh/_zh_cn/items_blocks/machines.md'
+
+  it('preserves the namespace, lowercase locale, and nested page path', () => {
+    expect(guideNhPageToLocalRelpath(
+      'resources/GTNH Guide Pack[gregtech]/guidenh/_zh_cn/items_blocks/machines.md',
+    )).toBe(target)
+    expect(guideNhPageToLocalRelpath(
+      'resources/gregtech/guidenh/_zh_cn/items_blocks/machines.md',
+    )).toBe(target)
+    expect(guideNhPageToLocalRelpath(target)).toBe(target)
+  })
+
+  it('normalizes duplicate suffixes and Windows separators before mapping', () => {
+    expect(guideNhPageToLocalRelpath(
+      'resources\\GTNH Guide Pack[gregtech](+2)\\guidenh\\_zh_cn\\items_blocks\\machines.md',
+    )).toBe(target)
+  })
+
+  it.each([
+    'resources/GTNH Guide Pack[bad domain]/guidenh/_zh_cn/index.md',
+    'resources/gregtech/guidenh/zh_cn/index.md',
+    'resources/gregtech/guidenh/_zh_cn/index.md.json',
+    'resources/gregtech/guidenh/_zh_cn/../../index.md',
+    'config/txloader/load/gregtech/lang/zh_CN.lang',
+    '/resources/gregtech/guidenh/_zh_cn/index.md',
+  ])('rejects invalid guide output path %s', (relpath) => {
+    expect(() => guideNhPageToLocalRelpath(relpath)).toThrow()
   })
 })
 

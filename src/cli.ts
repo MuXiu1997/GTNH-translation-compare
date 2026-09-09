@@ -8,6 +8,7 @@ import { $ } from 'bun'
 import chalk from 'chalk'
 import { Builtins, Cli, Command, Option } from 'clipanion'
 import { FiletypeGTLang } from '~/filetypes/filetype-gt-lang.ts'
+import { isGuideNhPageParatranzFile, isGuideNhPagePath } from '~/filetypes/filetype-guidenh-page.ts'
 import { FiletypeLang } from '~/filetypes/filetype-lang.ts'
 import {
   isMarkdownTooltipParatranzFile,
@@ -21,6 +22,7 @@ import { ConverterCache } from '~/paratranz/converter/cache.ts'
 import { Converter } from '~/paratranz/converter/index.ts'
 import {
   convertAndDedupeTranslationFiles,
+  guideNhPageToLocalRelpath,
   markdownTooltipToLocalRelpath,
 } from '~/paratranz/translation-paths.ts'
 import * as settings from '~/settings.ts'
@@ -36,9 +38,12 @@ export function isLangAndZsParatranzFile(name: string): boolean {
     && name !== `${settings.GT_LANG_TARGET_REL_PATH}.json`
   ) || name.endsWith('.zs.json')
   || isMarkdownTooltipParatranzFile(name)
+  || isGuideNhPageParatranzFile(name)
 }
 
 export function langAndZsLocalRelpath(relpath: string): string {
+  if (isGuideNhPagePath(relpath))
+    return guideNhPageToLocalRelpath(relpath)
   return isMarkdownTooltipPath(relpath)
     ? markdownTooltipToLocalRelpath(relpath)
     : relpath
@@ -147,6 +152,10 @@ abstract class BaseCommand extends Command {
 
   protected async uploadFile(file: Filetype): Promise<void> {
     const l = log.withTag(`${this.constructor.name}.uploadFile`)
+    if (Object.keys(file.properties).length === 0) {
+      l.warn(`Skipping source file with no strings: ${file.relpath}`)
+      return
+    }
     const paratranzFile = await this.converter.toParatranzFile(file)
     if (this.dryRun) {
       const dryRunPath = path.resolve(this.dryRunDir!, `${paratranzFile.fileName}.json`)
@@ -221,7 +230,7 @@ class FromParatranzQuestBookCommand extends BaseCommand {
 class FromParatranzLangAndZsCommand extends BaseCommand {
   static override paths = [['from-paratranz:lang-zs']]
   static override usage = Command.Usage({
-    description: 'Update lang and zs files from Paratranz',
+    description: 'Update lang, zs, markdown tooltip and GuideNH files from Paratranz',
   })
 
   repoPath = Option.String('-r,--repo-path', { description: 'Path to the repository', required: true })
@@ -233,7 +242,7 @@ class FromParatranzLangAndZsCommand extends BaseCommand {
       this.repoPath,
       isLangAndZsParatranzFile,
       undefined,
-      new Error('No lang, markdown tooltip, or zs file found'),
+      new Error('No lang, markdown tooltip, GuideNH page, or zs file found'),
       this.message,
       this.issue,
       langAndZsLocalRelpath,
@@ -298,7 +307,7 @@ class ToParatranzQuestBookCommand extends BaseCommand {
 class ToParatranzLangAndZsCommand extends BaseCommand {
   static override paths = [['to-paratranz:lang-zs']]
   static override usage = Command.Usage({
-    description: 'Upload lang and zs files to Paratranz',
+    description: 'Upload lang, zs, markdown tooltip and bundled GuideNH files to Paratranz',
   })
 
   modpackPath = Option.String('-m,--modpack-path', { description: 'Path to the modpack', required: true })

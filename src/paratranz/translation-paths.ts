@@ -1,3 +1,5 @@
+import { isGuideNhPagePath } from '~/filetypes/filetype-guidenh-page.ts'
+
 const PARATRANZ_DUPLICATE_SUFFIX_RE = /\s*\(\+\d+\)$/
 const BRACKETED_MOD_DOMAIN_RE = /\[([^[\]]+)\]$/
 const BARE_MOD_DOMAIN_RE = /^[\w.-]+$/
@@ -39,13 +41,34 @@ export function markdownTooltipToLocalRelpath(relpath: string): string {
     throw new Error(`Invalid markdown tooltip relpath: ${relpath}`)
   }
 
+  return resourcePartsToLocalRelpath(parts, 'markdown tooltip')
+}
+
+export function guideNhPageToLocalRelpath(relpath: string): string {
+  const parts = normalizedParts(relpath)
+
+  if (
+    parts[0] === 'config' && parts[1] === 'txloader' && parts[2] === 'load'
+    && parts[4] === 'guidenh' && isGuideNhPagePath(parts.slice(4).join('/'))
+    && BARE_MOD_DOMAIN_RE.test(parts[3] ?? '')
+  ) {
+    return parts.join('/')
+  }
+
+  if (parts[0] !== 'resources' || parts[2] !== 'guidenh' || !isGuideNhPagePath(parts.slice(2).join('/')))
+    throw new Error(`Invalid GuideNH page relpath: ${relpath}`)
+
+  return resourcePartsToLocalRelpath(parts, 'GuideNH page')
+}
+
+function resourcePartsToLocalRelpath(parts: string[], kind: string): string {
   const resourceFolder = parts[1]!
   const bracketedDomain = BRACKETED_MOD_DOMAIN_RE.exec(resourceFolder)?.[1]
   const modDomain = bracketedDomain
     ?? (BARE_MOD_DOMAIN_RE.test(resourceFolder) ? resourceFolder : undefined)
 
   if (!modDomain || !BARE_MOD_DOMAIN_RE.test(modDomain)) {
-    throw new Error(`Could not extract mod domain from markdown tooltip relpath: ${relpath}`)
+    throw new Error(`Could not extract mod domain from ${kind} relpath: ${parts.join('/')}`)
   }
 
   return [
