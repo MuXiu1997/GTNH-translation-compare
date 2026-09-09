@@ -6,5 +6,5 @@ Used for the Chinese localization package at [Kiwi233/Translation-of-GTNH](https
 
 # To maintainers of other languages
 
-If you need to adapt to other languages, please raise an issue or PR. You can directly use this repository instead of forking, and configure the environment variables used in [`src/gtnh_translation_compare/settings/__init__.py`](./src/gtnh_translation_compare/settings/__init__.py) in GitHub Actions.
+If you need to adapt to other languages, please raise an issue or PR. You can directly use this repository instead of forking, and configure the environment variables used in [`src/settings.ts`](./src/settings.ts) in GitHub Actions.
 For example, if you need to localize to 'zh_CN', you need to set the environment variable `TARGET_LANG` to 'zh_CN' in GitHub Actions.
